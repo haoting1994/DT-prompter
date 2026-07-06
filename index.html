@@ -229,12 +229,19 @@
     background:rgba(0,0,0,.72); align-items:center; justify-content:center;
   }
   #presentOverlay.show{ display:flex; }
+  .present-overlay-box{
+    display:flex; flex-direction:column; align-items:center; gap:16px;
+  }
   #presentFsBtn{
     padding:18px 32px; border-radius:12px; border:1.5px solid var(--amber);
     background:var(--panel); color:var(--amber); font-size:16px; font-weight:700;
     cursor:pointer;
   }
   #presentFsBtn:hover{ background:rgba(255,176,32,.12); }
+  .present-overlay-tip{
+    text-align:center; font-size:12px; color:var(--text-dim); line-height:1.7;
+  }
+  .present-overlay-tip b{ color:var(--text); }
   #presentWaiting{
     display:none; position:absolute; inset:0; align-items:center; justify-content:center;
     color:var(--text-dim); font-size:14px; font-family:'JetBrains Mono',monospace;
@@ -523,6 +530,7 @@
         <span class="switch-track sw-blue"><input type="checkbox" id="dualWindowToggle"><span class="switch-thumb"></span></span>
         <span class="switch-text">雙視窗模式</span>
       </label>
+      <button class="insert-btn" id="closePresentBtn" type="button" title="關閉外接的投放視窗（快捷鍵：在這個畫面按 Esc）" style="display:none; border-color:var(--tally-red); color:var(--tally-red);">✕ 關閉投放視窗</button>
     </div>
 
     <div class="screen-setup">
@@ -592,9 +600,12 @@
 <!-- 這幾個是操作用的介面元素，特意放在 #stage 之外，這樣即使投放內容翻轉了，這些文字也永遠維持正常可讀方向 -->
 <div id="presentWaiting">等待控制視窗連線中…</div>
 <div id="presentOverlay">
-  <button id="presentFsBtn" type="button">點此進入全螢幕</button>
+  <div class="present-overlay-box">
+    <button id="presentFsBtn" type="button">點此進入全螢幕</button>
+    <div class="present-overlay-tip">這個視窗剛開啟時通常已經是作用中視窗<br>不想動滑鼠的話，直接按鍵盤 <b>F11</b> 也可以全螢幕</div>
+  </div>
 </div>
-<button id="presentFsMiniBtn" type="button" title="進入全螢幕">⛶ 全螢幕</button>
+<button id="presentFsMiniBtn" type="button" title="進入全螢幕（或直接按 F11）">⛶ 全螢幕</button>
 
 <script>
 /* ---------------- 自訂紅點光暈游標 ---------------- */
@@ -731,6 +742,19 @@ function renderBackdrop(){
     return '<div>' + (escapeHtml(line) || '&nbsp;') + '</div>';
   }).join('');
   pasteBackdrop.innerHTML = html;
+  // 重建內容會讓背景層的捲動位置重設，這裡強制跟 textarea 重新對齊
+  syncBackdropScroll();
+}
+
+// 統一的捲動同步函式：立即校正一次，並在下一個畫面更新時再校正一次
+// （游標移動觸發的自動捲動有時候是非同步套用的，不會馬上觸發 scroll 事件）
+function syncBackdropScroll(){
+  pasteBackdrop.scrollTop = pasteArea.scrollTop;
+  pasteBackdrop.scrollLeft = pasteArea.scrollLeft;
+  requestAnimationFrame(()=>{
+    pasteBackdrop.scrollTop = pasteArea.scrollTop;
+    pasteBackdrop.scrollLeft = pasteArea.scrollLeft;
+  });
 }
 
 // paste tab
@@ -744,6 +768,9 @@ pasteArea.addEventListener('scroll', ()=>{
   pasteBackdrop.scrollTop = pasteArea.scrollTop;
   pasteBackdrop.scrollLeft = pasteArea.scrollLeft;
 });
+pasteArea.addEventListener('click', syncBackdropScroll);
+pasteArea.addEventListener('keyup', syncBackdropScroll);
+pasteArea.addEventListener('focus', syncBackdropScroll);
 
 // 模式頁籤：簡報模式／捲動模式
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -871,6 +898,26 @@ document.getElementById('editModeBtn').addEventListener('click', ()=>{
   clearTimeout(countdownTimer);
   document.getElementById('stage').style.display = 'none';
   document.getElementById('setup').style.display = 'flex';
+  updateClosePresentBtnVisibility();
+});
+
+/* ---------------- 關閉投放視窗（按鈕 + 編輯畫面按 Esc 快捷鍵） ---------------- */
+function updateClosePresentBtnVisibility(){
+  const show = !!(presentWin && !presentWin.closed);
+  document.getElementById('closePresentBtn').style.display = show ? 'inline-flex' : 'none';
+}
+document.getElementById('closePresentBtn').addEventListener('click', ()=>{
+  if(presentWin && !presentWin.closed) presentWin.close();
+  updateClosePresentBtnVisibility();
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.key !== 'Escape') return;
+  if(document.activeElement === pasteArea) return; // 打字中不要誤觸
+  if(document.getElementById('setup').style.display === 'none') return; // 投放中的 Esc 由 handleStageKey 處理
+  if(presentWin && !presentWin.closed){
+    presentWin.close();
+    updateClosePresentBtnVisibility();
+  }
 });
 
 /* ---------------- 計時器位置切換（右下角／正上方置中） ---------------- */
@@ -965,6 +1012,7 @@ async function openPresentWindow(){
   const features = `left=${left},top=${top},width=${width},height=${height},menubar=no,toolbar=no,location=no,status=no`;
   try{
     presentWin = window.open(url.toString(), 'hostPrompterPresent', features);
+    if(presentWin){ presentWin.focus(); }
   }catch(err){
     presentWin = null;
   }
