@@ -286,7 +286,7 @@
     overflow-y:auto;
   }
   .scroll-divider{
-    width:64px; height:2px; background:var(--line); border-radius:1px;
+    width:64px; height:2px; background:rgba(255,255,255,.6); border-radius:1px;
     margin:2.2em 0;
   }
   #cardText{
@@ -341,6 +341,17 @@
     font-size:11px; color:var(--text-dim); font-family:'JetBrains Mono',monospace;
     opacity:.6;
   }
+  .section-nav{
+    display:none; position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
+    gap:10px; z-index:50;
+  }
+  #stage.scroll-mode .section-nav{ display:flex; }
+  .section-nav-btn{
+    padding:8px 16px; border-radius:8px; border:1px solid var(--line);
+    background:rgba(20,23,28,.6); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    color:var(--text-dim); font-size:12px; font-weight:600; cursor:pointer; transition:.15s;
+  }
+  .section-nav-btn:hover{ border-color:var(--teal); color:var(--teal); background:rgba(47,209,196,.12); }
 
   /* ---------- TIMER WIDGET (bottom-right, 預設) ---------- */
   #timerWidget{
@@ -572,12 +583,18 @@
 
   <div class="exit-hint">Esc 返回設定 ｜ PageUp/PageDown、← → 或空白鍵翻頁 ｜ +/－ 調整文字大小、0 重設</div>
 
-  <div id="presentWaiting">等待控制視窗連線中…</div>
-  <div id="presentOverlay">
-    <button id="presentFsBtn" type="button">點此進入全螢幕</button>
+  <div id="sectionNav" class="section-nav">
+    <button class="section-nav-btn" id="prevSectionBtn" type="button" title="跳到上一段分頁線">◀ 上一段</button>
+    <button class="section-nav-btn" id="nextSectionBtn" type="button" title="跳到下一段分頁線">下一段 ▶</button>
   </div>
-  <button id="presentFsMiniBtn" type="button" title="進入全螢幕">⛶ 全螢幕</button>
 </div>
+
+<!-- 這幾個是操作用的介面元素，特意放在 #stage 之外，這樣即使投放內容翻轉了，這些文字也永遠維持正常可讀方向 -->
+<div id="presentWaiting">等待控制視窗連線中…</div>
+<div id="presentOverlay">
+  <button id="presentFsBtn" type="button">點此進入全螢幕</button>
+</div>
+<button id="presentFsMiniBtn" type="button" title="進入全螢幕">⛶ 全螢幕</button>
 
 <script>
 /* ---------------- 自訂紅點光暈游標 ---------------- */
@@ -1293,7 +1310,9 @@ function runCountdownSequence(){
 }
 
 function renderScrollContent(){
-  const html = cards.map(paragraphsHtml).join('<div class="scroll-divider"></div>');
+  const html = cards.map((c, i) =>
+    '<div class="scroll-section" data-section="' + i + '">' + paragraphsHtml(c) + '</div>'
+  ).join('<div class="scroll-divider"></div>');
   document.getElementById('cardText').innerHTML = html;
   document.getElementById('pageNum').textContent = '∞';
   document.getElementById('pageTotal').textContent = cards.length + ' 段';
@@ -1302,6 +1321,19 @@ function renderScrollContent(){
   stageMainEl.scrollTop = 0;
   stopAutoScroll();
   syncPresent('full');
+}
+
+function jumpSection(direction){
+  const sections = Array.from(document.querySelectorAll('.scroll-section'));
+  if(sections.length === 0) return;
+  const current = stageMainEl.scrollTop;
+  let idx = 0;
+  sections.forEach((sec, i)=>{
+    if(sec.offsetTop <= current + 8) idx = i;
+  });
+  idx = Math.max(0, Math.min(sections.length - 1, idx + direction));
+  stageMainEl.scrollTo({ top: sections[idx].offsetTop, behavior:'smooth' });
+  syncPresent('tick');
 }
 
 /* ---------------- 自動捲動（速度可調，僅捲動模式使用） ---------------- */
@@ -1355,6 +1387,8 @@ function speedDown(){ autoScrollSpeed = Math.max(0.1, +(autoScrollSpeed - 0.1).t
 function updateSpeedLabel(){ document.getElementById('speedLabel').textContent = autoScrollSpeed.toFixed(1) + 'x'; }
 
 document.getElementById('autoScrollToggleBtn').addEventListener('click', toggleAutoScroll);
+document.getElementById('prevSectionBtn').addEventListener('click', ()=> jumpSection(-1));
+document.getElementById('nextSectionBtn').addEventListener('click', ()=> jumpSection(1));
 document.getElementById('speedUpBtn').addEventListener('click', speedUp);
 document.getElementById('speedDownBtn').addEventListener('click', speedDown);
 
