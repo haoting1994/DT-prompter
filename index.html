@@ -1131,6 +1131,7 @@ if(!isPresentReceiver){
       document.getElementById('timerWidget').classList.toggle('timer-hidden', msg.timerHidden);
       receiverApplyFlip(msg.flipH, msg.flipV);
       document.getElementById('stage').classList.toggle('scroll-mode', scrollMode);
+      presentFontSize = null; // 投放接收視窗收到新內容，重新計算共用字級
       if(scrollMode){
         renderScrollContent();
       } else {
@@ -1238,28 +1239,47 @@ stageEl.addEventListener('gesturechange', (e)=>{
   applyScale();
 });
 
-function fitText(){
-  if(document.getElementById('stage').style.display !== 'flex') return;
-  if(scrollMode) return; // 捲動模式用固定基準字級，不要被 resize/全螢幕事件改動
+let presentFontSize = null; // 簡報（翻頁）模式全頁共用字級快取，null 代表需要重新計算
+
+// 掃過所有頁面（不含倒數頁），找出「能讓每一頁都不溢出」的最大共用字級，
+// 讓翻頁模式下每一頁字級、畫面占比一致，不會因為某頁字少就特別放大。
+function computePresentFontSize(){
   const available = stageMainEl.clientHeight - 4;
   const maxSize = 84;
   const minSize = 22;
-  let size = maxSize;
-  cardTextEl.style.fontSize = size + 'px';
-  while(size > minSize && cardTextEl.scrollHeight > available){
-    size -= 2;
+  let uniform = maxSize;
+  const originalHTML = cardTextEl.innerHTML;
+  const originalFontSize = cardTextEl.style.fontSize;
+  cards.forEach(raw=>{
+    if(raw.trim() === '!COUNTDOWN!') return; // 倒數頁用自己的排版，不參與共用字級計算
+    cardTextEl.innerHTML = paragraphsHtml(raw);
+    let size = maxSize;
     cardTextEl.style.fontSize = size + 'px';
-  }
+    while(size > minSize && cardTextEl.scrollHeight > available){
+      size -= 2;
+      cardTextEl.style.fontSize = size + 'px';
+    }
+    if(size < uniform) uniform = size;
+  });
+  cardTextEl.innerHTML = originalHTML;
+  cardTextEl.style.fontSize = originalFontSize;
+  presentFontSize = uniform;
+}
+
+function fitText(){
+  if(document.getElementById('stage').style.display !== 'flex') return;
+  if(scrollMode) return; // 捲動模式用固定基準字級，不要被 resize/全螢幕事件改動
+  if(presentFontSize == null) computePresentFontSize();
   cardTextEl.style.fontSize = '';
-  cardTextEl.style.setProperty('--auto-font', size + 'px');
+  cardTextEl.style.setProperty('--auto-font', presentFontSize + 'px');
 }
 
 let fitTextTimer = null;
 window.addEventListener('resize', ()=>{
   clearTimeout(fitTextTimer);
-  fitTextTimer = setTimeout(fitText, 120);
+  fitTextTimer = setTimeout(()=>{ presentFontSize = null; fitText(); }, 120);
 });
-document.addEventListener('fullscreenchange', ()=> setTimeout(fitText, 60));
+document.addEventListener('fullscreenchange', ()=> setTimeout(()=>{ presentFontSize = null; fitText(); }, 60));
 
 let scrollMode = false;
 
@@ -1284,6 +1304,7 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
   const mBottom = parseInt(document.getElementById('marginBottom').value, 10) || 0;
   const mLR = parseInt(document.getElementById('marginLR').value, 10) || 0;
   stageMainEl.style.padding = mTop + 'px ' + mLR + 'px ' + mBottom + 'px ' + mLR + 'px';
+  presentFontSize = null; // 內容或邊距可能改變了，重新計算共用字級
 
   updateExitHint();
   document.getElementById('editModeBtn').style.display = dualWindowMode ? 'flex' : 'none';
