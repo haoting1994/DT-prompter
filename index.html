@@ -644,6 +644,18 @@ if(isPresentReceiver){
   document.getElementById('presentFsBtn').addEventListener('click', enterPresentFullscreen);
   document.getElementById('presentFsMiniBtn').addEventListener('click', enterPresentFullscreen);
 
+  // 自動偵測：F11 是瀏覽器原生的全螢幕，不會觸發 Fullscreen API，
+  // 所以額外用「視窗尺寸是不是已經跟螢幕一樣大」來判斷，符合的話就自動把提示收起來，不用使用者再多點一次
+  function checkAlreadyFullscreenish(){
+    const looksFullscreen = window.innerWidth >= screen.width - 4 && window.innerHeight >= screen.height - 4;
+    if(document.fullscreenElement || looksFullscreen){
+      document.getElementById('presentOverlay').classList.remove('show');
+    }
+  }
+  window.addEventListener('resize', checkAlreadyFullscreenish);
+  document.addEventListener('fullscreenchange', checkAlreadyFullscreenish);
+  setTimeout(checkAlreadyFullscreenish, 400);
+
   if(window.opener){
     try{ window.opener.postMessage({ type:'ready' }, '*'); }catch(e){}
   }
@@ -771,6 +783,25 @@ pasteArea.addEventListener('scroll', ()=>{
 pasteArea.addEventListener('click', syncBackdropScroll);
 pasteArea.addEventListener('keyup', syncBackdropScroll);
 pasteArea.addEventListener('focus', syncBackdropScroll);
+
+// 持續性保險：只要文字框還在編輯中，就用一個很輕量的間隔持續校正，
+// 徹底堵住「瀏覽器打字時自動捲動」跟我們的事件監聽之間可能出現的時機差
+let backdropSyncInterval = null;
+pasteArea.addEventListener('focus', ()=>{
+  clearInterval(backdropSyncInterval);
+  backdropSyncInterval = setInterval(()=>{
+    if(pasteBackdrop.scrollTop !== pasteArea.scrollTop){
+      pasteBackdrop.scrollTop = pasteArea.scrollTop;
+    }
+    if(pasteBackdrop.scrollLeft !== pasteArea.scrollLeft){
+      pasteBackdrop.scrollLeft = pasteArea.scrollLeft;
+    }
+  }, 120);
+});
+pasteArea.addEventListener('blur', ()=>{
+  clearInterval(backdropSyncInterval);
+  syncBackdropScroll();
+});
 
 // 模式頁籤：簡報模式／捲動模式
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -1368,7 +1399,24 @@ function renderScrollContent(){
   cardTextEl.style.setProperty('--auto-font', '56px');
   stageMainEl.scrollTop = 0;
   stopAutoScroll();
+  updateScrollEndSpacer();
   syncPresent('full');
+}
+
+// 在最後補一段空間，高度跟容器可視高度差不多，
+// 這樣即使是最後幾段內容，也有足夠的捲動空間可以被推到畫面最上方
+function updateScrollEndSpacer(){
+  if(!scrollMode) return;
+  cardTextEl.style.paddingBottom = Math.max(0, stageMainEl.clientHeight - 80) + 'px';
+}
+window.addEventListener('resize', ()=>{ if(scrollMode) updateScrollEndSpacer(); });
+
+function getSectionScrollTop(sec){
+  // 用實際渲染位置換算，不用 offsetTop —— 這樣不管文字被放大縮小多少，算出來的位置永遠準確
+  const secRect = sec.getBoundingClientRect();
+  const containerRect = stageMainEl.getBoundingClientRect();
+  const topBuffer = 10; // 留一點點緩衝，避免文字第一行剛好卡在最邊緣
+  return stageMainEl.scrollTop + (secRect.top - containerRect.top) - topBuffer;
 }
 
 function jumpSection(direction){
@@ -1377,10 +1425,13 @@ function jumpSection(direction){
   const current = stageMainEl.scrollTop;
   let idx = 0;
   sections.forEach((sec, i)=>{
-    if(sec.offsetTop <= current + 8) idx = i;
+    if(getSectionScrollTop(sec) <= current + 8) idx = i;
   });
   idx = Math.max(0, Math.min(sections.length - 1, idx + direction));
-  stageMainEl.scrollTo({ top: sections[idx].offsetTop, behavior:'smooth' });
+  const target = Math.max(0, getSectionScrollTop(sections[idx]));
+  // 用即時跳轉而不是平滑動畫：平滑捲動如果還沒跑完就被下一次點擊打斷，
+  // 位置會卡在動畫途中，導致連續按「下一段」時對不準分頁線
+  stageMainEl.scrollTop = target;
   syncPresent('tick');
 }
 
