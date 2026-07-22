@@ -49,15 +49,19 @@
 
   /* ---------- SETUP SCREEN ---------- */
   #setup{
-    height:100vh; display:flex; align-items:center; justify-content:center;
+    min-height:100vh; display:flex; align-items:flex-start; justify-content:center;
     padding:24px; overflow-y:auto;
+    /* align-items 用 flex-start（不用 center）：
+       如果卡片比視窗高，center 對齊在某些瀏覽器會讓上半部分捲不到、卡在中間看不到頂端，
+       這是 flex 置中 + overflow 的已知問題。用 flex-start 從上面對齊，捲動永遠正常可靠。 */
   }
   .setup-card{
-    width:100%; max-width:1180px;
+    width:100%; max-width:min(94vw, 1500px);
     background:var(--panel);
     border:1px solid var(--line);
     border-radius:14px;
     padding:18px 28px;
+    margin:24px 0;
   }
   .eyebrow{
     font-family:'JetBrains Mono',monospace;
@@ -86,6 +90,7 @@
   }
   .brand-text{
     font-size:14px; font-weight:800; letter-spacing:.03em; color:var(--text);
+    position:relative; top:-1.75px; /* 視覺校正：實測收斂後的最佳值 */
   }
   .eyebrow-sub{
     font-size:12px; font-weight:500; color:var(--text-dim);
@@ -95,10 +100,13 @@
   .tabs{ display:flex; gap:8px; margin-bottom:10px; }
   .tab-btn{
     flex:1; padding:10px; border-radius:8px; border:1px solid var(--line);
-    background:var(--panel-2); color:var(--text-dim); font-size:13px; cursor:pointer;
-    font-weight:600; transition:.15s;
+    color:var(--text-dim); font-size:13px; cursor:pointer;
+    font-weight:600; transition:.15s; text-align:center;
   }
-  .tab-btn.active{ background:rgba(255,176,32,.12); border-color:var(--amber); color:var(--amber); }
+  .tab-btn[data-mode="present"]{ background:rgba(255,176,32,.05); }
+  .tab-btn[data-mode="scroll"]{ background:rgba(47,209,196,.05); }
+  .tab-btn[data-mode="present"].active{ background:rgba(255,176,32,.15); border-color:var(--amber); color:var(--amber); }
+  .tab-btn[data-mode="scroll"].active{ background:rgba(47,209,196,.15); border-color:var(--teal); color:var(--teal); }
 
   .editor-wrap{
     position:relative; min-height:227px;
@@ -221,6 +229,13 @@
   .insert-btn-upload{ border-color:var(--blue); color:var(--blue); }
   .insert-btn-upload:hover{ border-color:var(--blue); color:var(--blue); background:rgba(59,130,246,.12); }
 
+  #findInput{
+    flex:1 1 320px; min-width:200px; background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
+    color:var(--text); font-size:13px; padding:8px 12px; outline:none;
+  }
+  #findInput:focus{ border-color:var(--amber); }
+  #findStatus{ margin:0; white-space:nowrap; }
+
   /* ---------- 雙視窗：投放接收視窗專用樣式 ---------- */
   body.present-receiver .stage-top{ display:none; }
   body.present-receiver .exit-hint{ display:none; }
@@ -286,22 +301,27 @@
   .dot.cur{ background:var(--amber); }
 
   .stage-main{
-    flex:1; display:flex; align-items:flex-start; justify-content:center;
+    flex:1; min-height:0; display:flex; align-items:flex-start; justify-content:center;
     padding:32px 64px 150px 64px; text-align:left; overflow:hidden;
+    /* min-height:0 是關鍵：直行 flex 容器（#stage）裡的 flex:1 子項目，
+       瀏覽器預設 min-height:auto，代表內容多高，這個區塊就會被撐多高，
+       完全不會被限制在可視高度內——導致捲動模式內容超長時整塊被撐出畫面外、
+       而不是乖乖用 overflow-y:auto 在內部捲動，滾輪因此完全滾不動。
+       設成 0 才會強制它只吃 flex 分配到的高度，多出來的內容才會真正變成可捲動。 */
   }
   #stage.scroll-mode .stage-main{
     overflow-y:auto;
   }
   .scroll-divider{
     width:64px; height:2px; background:rgba(255,255,255,.6); border-radius:1px;
-    margin:2.2em 0;
+    margin:1em 0;
   }
   #cardText{
     font-size:calc(var(--auto-font, 60px) * var(--text-scale, 1));
-    font-weight:700; line-height:1.48; letter-spacing:-.01em;
+    font-weight:700; line-height:1.7; letter-spacing:-.01em;
     max-width:1650px; width:100%; text-align:left; overflow-wrap:break-word;
   }
-  #cardText .para{ margin-top:0.45em; }
+  #cardText .para{ margin-top:0.8em; }
   #cardText .para:first-child{ margin-top:0; }
 
   /* ---------- 倒數頁：一般翻頁模式（有動畫） ---------- */
@@ -334,7 +354,7 @@
   /* ---------- 倒數頁：捲動模式（靜態顯示，不做動畫） ---------- */
   #cardText .countdown-static{
     display:flex; flex-direction:column; align-items:center; gap:.3em;
-    text-align:center; margin-top:0.45em;
+    text-align:center; margin-top:0.8em;
   }
   #cardText .countdown-static:first-child{ margin-top:0; }
   #cardText .countdown-static .cs-label{ font-size:0.55em; color:var(--text-dim); letter-spacing:.08em; }
@@ -461,6 +481,42 @@
   #timerPosBtn:hover{
     background:rgba(52,211,153,.12); color:var(--green); border-color:var(--green);
   }
+  #markBtn{
+    border:1.5px solid var(--amber); color:var(--amber);
+  }
+  #markBtn:hover{
+    background:rgba(255,176,32,.12); color:var(--amber); border-color:var(--amber);
+  }
+  #markToast{
+    position:fixed; top:24px; left:50%; transform:translateX(-50%);
+    background:rgba(20,23,28,.94); border:1px solid var(--amber); color:var(--amber);
+    padding:10px 20px; border-radius:10px; font-size:13px; font-weight:700;
+    letter-spacing:.02em; z-index:99998; opacity:0; transition:opacity .2s;
+    pointer-events:none; white-space:nowrap;
+  }
+  #markToast.show{ opacity:1; }
+  .mark-nav-wrap{ position:relative; }
+  .mark-dropdown{
+    display:none; position:absolute; bottom:calc(100% + 8px); left:0; z-index:60;
+    min-width:280px; max-width:360px; max-height:280px; overflow-y:auto;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:6px; box-shadow:0 12px 32px rgba(0,0,0,.5);
+  }
+  .mark-dropdown.show{ display:block; }
+  .mark-item{
+    display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:7px;
+    cursor:pointer; font-size:12px; color:var(--text); transition:.12s;
+  }
+  .mark-item:hover{ background:var(--panel-2); }
+  .mark-item-num{
+    flex-shrink:0; color:var(--purple); font-weight:700; font-family:'JetBrains Mono',monospace;
+  }
+  .mark-item-text{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mark-item-del{
+    flex-shrink:0; color:var(--text-dim); font-size:14px; line-height:1; padding:2px 4px; border-radius:4px;
+  }
+  .mark-item-del:hover{ color:var(--tally-red); background:rgba(255,59,48,.12); }
+  .mark-dropdown-empty{ padding:12px; font-size:12px; color:var(--text-dim); text-align:center; }
   #editModeBtn{
     width:auto; padding:0 16px; border:1.5px solid var(--purple); color:var(--purple);
     font-size:13px; font-weight:700; letter-spacing:.02em;
@@ -485,6 +541,39 @@
   }
 
   ::selection{ background:var(--amber); color:#000; }
+  /* ---------- RWD：手機／平板（例如 iPad）---------- */
+  @media (max-width: 820px){
+    /* 雙視窗、搜尋這類桌機導向的功能，在小螢幕上不需要也不好操作，直接隱藏 */
+    .desktop-only-feature{ display:none !important; }
+
+    body{ overflow-y:auto; overflow-x:hidden; }
+    #setup{ height:auto; min-height:100vh; align-items:flex-start; padding:16px; }
+    .setup-card{ padding:16px 14px; max-height:none; }
+    .eyebrow-big{ font-size:16px; }
+    .brand-logo{ height:26px; }
+
+    .tabs{ flex-direction:column; }
+    .insert-row{ gap:6px; }
+    .insert-btn, .start-btn{ font-size:12px; padding:8px 12px; }
+    .switches-row{ gap:12px 16px; }
+    .margin-setup{ gap:6px 8px; }
+    .margin-setup input{ width:44px; }
+
+    /* 投放畫面：工具列改用自動換行，按鈕稍微縮小，觸控也比較好按 */
+    .stage-top{ flex-wrap:wrap; gap:8px; padding:12px 14px 0 14px; }
+    .top-right-controls{ flex-wrap:wrap; justify-content:flex-end; row-gap:8px; }
+    .mini-btn{ width:38px; height:38px; }
+    .stage-main{ padding-left:24px; padding-right:24px; }
+    #timerWidget{ transform:scale(.7); transform-origin:bottom right; }
+    #timerWidget.timer-top{ transform:translateX(-50%) scale(.7); transform-origin:top center; }
+    .section-nav{ bottom:8px; }
+    .section-nav-btn{ font-size:11px; padding:6px 12px; }
+  }
+  @media (max-width: 480px){
+    .top-right-controls > *{ transform:scale(.92); }
+    .autoscroll-controls, .scale-controls{ padding:2px; }
+  }
+
 </style>
 </head>
 <body>
@@ -494,11 +583,11 @@
 <!-- ===================== SETUP ===================== -->
 <div id="setup">
   <div class="setup-card">
-    <div class="eyebrow-big"><img src="data:image/png;base64,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AAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AEwAhxMAAAAlSURBVAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA38Lx47FT+WXF3XAAAAAElFTkSuQmCC" class="brand-logo" alt="logo"><span class="brand-text">PROMPTER</span></div>
+    <div class="eyebrow-big"><img src="data:image/png;base64,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AAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgD8AEcDgBAAAAJUlEQVQAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA38Lx47FT+WXF3XAAAAAElFTkSuQmCC" class="brand-logo" alt="logo"><span class="brand-text">PROMPTER</span></div>
 
     <div class="tabs">
-      <div class="tab-btn active" data-mode="present">簡報模式</div>
-      <div class="tab-btn" data-mode="scroll">捲動模式</div>
+      <div class="tab-btn active" data-mode="present">簡報 SLIDE</div>
+      <div class="tab-btn" data-mode="scroll">捲動 SCROLL</div>
     </div>
 
     <div id="panel-paste">
@@ -508,16 +597,29 @@
       </div>
       <input type="file" id="fileInput" accept=".docx">
       <div class="insert-row">
-        <button class="insert-btn" id="insertDividerBtn" type="button">＋ 在游標處插入分頁線 ---</button>
+        <button class="insert-btn" id="insertDividerBtn" type="button" title="快捷鍵：在文字框內按 Tab">＋ 插入分頁線</button>
         <button class="insert-btn insert-btn-spacer" id="insertCountdownBtn" type="button" title="插入一個獨立的倒數頁：現場準備 → 3 → 2 → 1 → 綠轉紅開始標示">＋ 加入倒數</button>
         <button class="insert-btn insert-btn-upload" id="uploadWordBtn" type="button">📄 上傳 Word (.docx)</button>
         <div class="count-preview" id="cardCount">目前頁數：0</div>
         <button class="start-btn" id="startBtn" disabled>開始投放 →</button>
       </div>
       <div class="file-ok" id="fileStatus"></div>
+      <div class="insert-row" id="findRow">
+        <input type="text" id="findInput" class="desktop-only-feature" placeholder="搜尋逐字稿裡的文字，快速跳到那一段…">
+        <button class="insert-btn desktop-only-feature" id="findNextBtn" type="button">🔍 找下一個</button>
+        <div class="mark-nav-wrap">
+          <button class="insert-btn insert-btn-spacer" id="jumpMarkBtn" type="button" title="投放時按畫面上的 🔖 或按 M 鍵標記要修改的段落，回來這裡點開清單直接跳到任一個" disabled>🔖 標記 (0)</button>
+          <div class="mark-dropdown" id="markDropdown"></div>
+        </div>
+        <span class="hint" id="findStatus"></span>
+      </div>
     </div>
 
     <div class="switches-row">
+      <label class="switch-item desktop-only-feature" title="開一個獨立的投放視窗，可拖到外接螢幕/提詞機單獨全螢幕；本機這邊變成控制台，畫面永遠不會翻轉">
+        <span class="switch-track sw-blue"><input type="checkbox" id="dualWindowToggle"><span class="switch-thumb"></span></span>
+        <span class="switch-text">雙視窗模式</span>
+      </label>
       <label class="switch-item" title="左右鏡像，適合提詞機鏡面反射">
         <span class="switch-track sw-purple"><input type="checkbox" id="flipHToggle"><span class="switch-thumb"></span></span>
         <span class="switch-text">水平翻轉</span>
@@ -525,10 +627,6 @@
       <label class="switch-item" title="上下顛倒">
         <span class="switch-track sw-purple"><input type="checkbox" id="flipVToggle"><span class="switch-thumb"></span></span>
         <span class="switch-text">垂直翻轉</span>
-      </label>
-      <label class="switch-item" title="開一個獨立的投放視窗，可拖到外接螢幕/提詞機單獨全螢幕；本機這邊變成控制台，畫面永遠不會翻轉">
-        <span class="switch-track sw-blue"><input type="checkbox" id="dualWindowToggle"><span class="switch-thumb"></span></span>
-        <span class="switch-text">雙視窗模式</span>
       </label>
       <button class="insert-btn" id="closePresentBtn" type="button" title="關閉外接的投放視窗（快捷鍵：在這個畫面按 Esc）" style="display:none; border-color:var(--tally-red); color:var(--tally-red);">✕ 關閉投放視窗</button>
     </div>
@@ -566,6 +664,7 @@
       </div>
       <button class="mini-btn" id="flipHBtn" title="水平翻轉（左右鏡射，適合提詞機鏡面）">⇋</button>
       <button class="mini-btn" id="flipVBtn" title="垂直翻轉（上下顛倒）">⇕</button>
+      <button class="mini-btn" id="markBtn" title="標記這一段，之後回編輯畫面可以快速跳過來改（快捷鍵：M）">🔖</button>
       <button class="mini-btn" id="editModeBtn" title="暫時返回編輯畫面（投放視窗保持開啟，改完內容再按開始投放套用）" style="display:none;">Edit</button>
       <button class="mini-btn" id="timerToggleBtn" title="顯示／隱藏計時器">⏱</button>
       <button class="mini-btn" id="timerPosBtn" title="計時器位置：右下角／正上方置中">⤒</button>
@@ -682,7 +781,10 @@ function docxHtmlToCards(html){
 
   function flushPending(){
     if(pending.length){
-      const text = pending.join('\n').trim();
+      // 用雙換行（段落分隔）而不是單換行，讓 Word 裡原本各自獨立的段落
+      // 在提詞台上也各自是一個獨立段落（有段距），不會因為 Word 段落間
+      // 沒有空白行，就被擠成同一段裡用 <br> 硬接在一起、句子貼太近的問題。
+      const text = pending.join('\n\n').trim();
       if(text) cardsOut.push(text);
       pending = [];
     }
@@ -758,15 +860,25 @@ function renderBackdrop(){
   syncBackdropScroll();
 }
 
-// 統一的捲動同步函式：立即校正一次，並在下一個畫面更新時再校正一次
-// （游標移動觸發的自動捲動有時候是非同步套用的，不會馬上觸發 scroll 事件）
+// 統一的捲動同步函式：立即校正一次，並且連續追蹤好幾個畫面更新週期再校正
+// （游標移動觸發的自動捲動、尤其是插入分頁線／倒數之後跳到新游標位置，
+//  這個自動捲動常常要拖到好幾個 frame 之後才真正定住，只補一次 rAF 常常補不夠，
+//  導致背景層的分頁線／倒數樣式跟 textarea 實際游標位置對不齊。這裡改成連續補
+//  差不多 300ms，確保捲動真正穩定之後，背景層一定跟 textarea 同步）
+let backdropSettleToken = 0;
 function syncBackdropScroll(){
   pasteBackdrop.scrollTop = pasteArea.scrollTop;
   pasteBackdrop.scrollLeft = pasteArea.scrollLeft;
-  requestAnimationFrame(()=>{
+  const token = ++backdropSettleToken;
+  let framesLeft = 18; // 約 300ms（18 frames @ ~60fps）
+  function tick(){
+    if(token !== backdropSettleToken) return; // 有更新的校正已經啟動，這個舊的就不用再跑了
     pasteBackdrop.scrollTop = pasteArea.scrollTop;
     pasteBackdrop.scrollLeft = pasteArea.scrollLeft;
-  });
+    framesLeft--;
+    if(framesLeft > 0) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 }
 
 // paste tab
@@ -821,12 +933,12 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 
 // 在游標處插入分頁線
 const insertDividerBtn = document.getElementById('insertDividerBtn');
-insertDividerBtn.addEventListener('click', ()=>{
+function insertDividerAtCursor(){
   const start = pasteArea.selectionStart;
   const end = pasteArea.selectionEnd;
   const before = pasteArea.value.slice(0, start);
   const after = pasteArea.value.slice(end);
-  const insertText = (before && !before.endsWith('\n') ? '\n' : '') + '---' + (after && !after.startsWith('\n') ? '\n' : '');
+  const insertText = (before && !before.endsWith('\n') ? '\n' : '') + '---\n';
   pasteArea.value = before + insertText + after;
   const newPos = (before + insertText).length;
   pasteArea.focus({ preventScroll: true });
@@ -834,6 +946,13 @@ insertDividerBtn.addEventListener('click', ()=>{
   cards = splitToCards(pasteArea.value);
   updatePreview();
   renderBackdrop();
+}
+insertDividerBtn.addEventListener('click', insertDividerAtCursor);
+pasteArea.addEventListener('keydown', (e)=>{
+  if(e.key === 'Tab'){
+    e.preventDefault(); // 不要讓 Tab 跳到下一個欄位，改成插入分頁線
+    insertDividerAtCursor();
+  }
 });
 
 const insertCountdownBtn = document.getElementById('insertCountdownBtn');
@@ -861,6 +980,36 @@ insertCountdownBtn.addEventListener('click', ()=>{
   cards = splitToCards(pasteArea.value);
   updatePreview();
   renderBackdrop();
+});
+
+/* ---------------- 搜尋：在逐字稿裡找文字，方便直接跳到那一段 ---------------- */
+const findInput = document.getElementById('findInput');
+const findNextBtn = document.getElementById('findNextBtn');
+const findStatus = document.getElementById('findStatus');
+function findNext(){
+  const q = findInput.value;
+  if(!q){ findStatus.textContent = ''; return; }
+  const text = pasteArea.value;
+  const from = (document.activeElement === pasteArea) ? pasteArea.selectionEnd : 0;
+  let idx = text.indexOf(q, from);
+  let wrapped = false;
+  if(idx === -1){
+    idx = text.indexOf(q, 0);
+    wrapped = true;
+  }
+  if(idx === -1){
+    findStatus.textContent = '找不到「' + q + '」';
+    return;
+  }
+  pasteArea.focus({ preventScroll: true });
+  pasteArea.setSelectionRange(idx, idx + q.length);
+  scrollEditorToTextPos(idx);
+  syncBackdropScroll();
+  findStatus.textContent = wrapped ? '已從頭開始，找到一筆' : '找到了，按 Enter 找下一筆';
+}
+findNextBtn.addEventListener('click', findNext);
+findInput.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){ e.preventDefault(); findNext(); }
 });
 
 // Word 上傳（拖放到編輯框，或按「上傳 Word」按鈕）
@@ -923,12 +1072,237 @@ function toggleFullscreen(){
 }
 document.getElementById('fsBtn').addEventListener('click', toggleFullscreen);
 
+/* ---------------- 回到編輯畫面時，把游標／捲動位置定位到「剛剛正在投放看的那一段」 ----------------
+   簡報模式看 cardIndex；捲動模式看目前捲動到哪一段（section），
+   兩種都用「在原始文字裡找到那一段內容」的方式定位，比記字元位置更不怕內容被中途改過。 */
+function getCurrentSectionIndex(){
+  const sections = Array.from(document.querySelectorAll('.scroll-section'));
+  if(sections.length === 0) return 0;
+  const current = stageMainEl.scrollTop;
+  let idx = 0;
+  sections.forEach((sec, i)=>{
+    if(getSectionScrollTop(sec) <= current + 8) idx = i;
+  });
+  return idx;
+}
+// 直接算出「這個字元位置在第幾行」，換算成 pasteBackdrop 那一行 div 的 offsetTop，
+// 明確設定 scrollTop——不要只靠 setSelectionRange 期待瀏覽器自動把游標捲進畫面，
+// 那個自動捲動在小尺寸的 textarea、或選取範圍很長的情況下不一定可靠。
+function scrollEditorToTextPos(pos){
+  const upto = pasteArea.value.slice(0, pos);
+  const lineIdx = upto.split('\n').length - 1;
+  const el = pasteBackdrop.children[lineIdx];
+  if(!el) return;
+  const target = Math.max(0, el.offsetTop - Math.round(pasteArea.clientHeight / 3));
+  pasteArea.scrollTop = target;
+  pasteBackdrop.scrollTop = target;
+}
+function focusEditorOnCard(idx){
+  if(!cards[idx]){ showMarkToast('跳轉失敗（找不到這一頁）'); return false; }
+  const target = cards[idx];
+  const pos = pasteArea.value.indexOf(target);
+  if(pos === -1){ showMarkToast('跳轉失敗（內容可能已經被改過）'); return false; }
+  pasteArea.focus({ preventScroll: true });
+  pasteArea.setSelectionRange(pos, pos + target.length);
+  scrollEditorToTextPos(pos);
+  syncBackdropScroll();
+  return true;
+}
+// 捲動模式常常整份逐字稿只有「一頁」（沒有用「---」分頁），這時候 getCurrentSectionIndex／
+// focusEditorOnCard 這組「頁」等級的定位完全沒用（永遠只有第 0 頁），退回編輯永遠停在最前面。
+// 這裡改成精確到「段」等級：用 renderScrollContent 時記錄的 scrollParaRegistry 直接定位。
+function getCurrentScrollParaIndex(){
+  const paras = Array.from(document.querySelectorAll('#cardText [data-pidx]'));
+  if(paras.length === 0) return -1;
+  const current = stageMainEl.scrollTop;
+  let idx = -1;
+  paras.forEach(el=>{
+    if(getSectionScrollTop(el) <= current + 8) idx = parseInt(el.getAttribute('data-pidx'), 10);
+  });
+  if(idx === -1) idx = parseInt(paras[0].getAttribute('data-pidx'), 10);
+  return idx;
+}
+function focusEditorOnScrollPara(idx){
+  if(idx == null || idx < 0 || !scrollParaRegistry[idx]){ showMarkToast('跳轉失敗（找不到這一段）'); return false; }
+  const target = scrollParaRegistry[idx];
+  const pos = pasteArea.value.indexOf(target);
+  if(pos === -1){ showMarkToast('跳轉失敗（內容可能已經被改過）'); return false; }
+  pasteArea.focus({ preventScroll: true });
+  pasteArea.setSelectionRange(pos, pos + target.length);
+  scrollEditorToTextPos(pos);
+  syncBackdropScroll();
+  return true;
+}
+
+/* ---------------- 反過來：開始投放時，從編輯器「目前看到的段落」開始投放 ----------------
+   一開始用文字游標（selectionStart）判斷位置，但實測發現不準——因為使用者是「滑動捲軸」
+   看到某一段就按開始投放，滑動捲軸本身不會移動文字游標，游標還停在上次點擊/打字的地方，
+   兩者常常對不上。改成直接量「編輯框目前捲動到哪一行」（跟 pasteBackdrop 逐行對照），
+   換算成字元位置，這樣不管是用滑鼠捲動還是點擊游標，都是看畫面上「現在看到的那一段」。 */
+function getEditorScrollCharOffset(){
+  const lineDivs = Array.from(pasteBackdrop.children);
+  if(lineDivs.length === 0) return 0;
+  const containerRect = pasteBackdrop.getBoundingClientRect();
+  let topIdx = 0;
+  for(let i = 0; i < lineDivs.length; i++){
+    const rect = lineDivs[i].getBoundingClientRect();
+    if(rect.top - containerRect.top <= 8){ topIdx = i; } else { break; }
+  }
+  const lines = pasteArea.value.split('\n');
+  let offset = 0;
+  for(let i = 0; i < topIdx && i < lines.length; i++){
+    offset += lines[i].length + 1; // +1 是換行符
+  }
+  return offset;
+}
+function getCardIndexAtCursor(pos){
+  if(cards.length === 0) return 0;
+  if(pos == null) pos = pasteArea.selectionStart;
+  let searchFrom = 0;
+  for(let i = 0; i < cards.length; i++){
+    const start = pasteArea.value.indexOf(cards[i], searchFrom);
+    if(start === -1) continue; // 理論上不會找不到，保險起見跳過
+    const end = start + cards[i].length;
+    searchFrom = end;
+    if(pos <= end) return i;
+  }
+  return cards.length - 1; // 游標在所有頁之後（例如最後面），就當作最後一頁
+}
+function getScrollParaIndexAtCursor(pos){
+  if(pos == null) pos = pasteArea.selectionStart;
+  let searchFrom = 0;
+  let flatIdx = 0;
+  for(let i = 0; i < cards.length; i++){
+    const cardStart = pasteArea.value.indexOf(cards[i], searchFrom);
+    if(cardStart === -1) continue;
+    const paras = cards[i].split(/\n{2,}/).map(p => p.trim()).filter(p => p.length > 0);
+    let pSearchFrom = cardStart;
+    for(let j = 0; j < paras.length; j++){
+      const pStart = pasteArea.value.indexOf(paras[j], pSearchFrom);
+      if(pStart === -1){ flatIdx++; continue; }
+      const pEnd = pStart + paras[j].length;
+      pSearchFrom = pEnd;
+      if(pos <= pEnd) return flatIdx;
+      flatIdx++;
+    }
+    searchFrom = cardStart + cards[i].length;
+  }
+  return Math.max(0, flatIdx - 1); // 游標在所有段落之後，就當作最後一段
+}
+function scrollStageToPara(idx){
+  if(idx == null || idx < 0) return;
+  const el = document.querySelector('#cardText [data-pidx="' + idx + '"]');
+  if(!el) return;
+  stageMainEl.scrollTop = Math.max(0, getSectionScrollTop(el));
+}
+
+/* ---------------- 標記：投放時發現要改的地方，先標記，回編輯再依序跳過去 ----------------
+   不把標記寫進逐字稿本身（那樣投放畫面上會多出奇怪的符號），只記在記憶體裡，
+   位置一樣用「第幾頁／第幾段」＋對應原始文字表示，跟上面幾個定位函式共用同一套邏輯。 */
+let marks = [];
+let markCursor = 0;
+function addMark(){
+  const m = scrollMode ? { paraIdx: getCurrentScrollParaIndex() } : { cardIdx: cardIndex };
+  const last = marks[marks.length - 1];
+  if(last && JSON.stringify(last) === JSON.stringify(m)){
+    showMarkToast('這裡已經標記過了');
+    return;
+  }
+  marks.push(m);
+  showMarkToast('🔖 已標記（目前 ' + marks.length + ' 個）');
+  updateMarkBtnLabel();
+}
+function showMarkToast(text, duration){
+  let toast = document.getElementById('markToast');
+  if(!toast){
+    toast = document.createElement('div');
+    toast.id = 'markToast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = text;
+  toast.classList.add('show');
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(()=>{ toast.classList.remove('show'); }, duration || 1300);
+}
+function updateMarkBtnLabel(){
+  const btn = document.getElementById('jumpMarkBtn');
+  if(!btn) return;
+  btn.textContent = '🔖 標記 (' + marks.length + ')';
+  btn.disabled = marks.length === 0;
+}
+function jumpToMark(){
+  if(marks.length === 0) return;
+  const shownNumber = (markCursor % marks.length) + 1;
+  const m = marks[markCursor % marks.length];
+  const ok = m.paraIdx != null ? focusEditorOnScrollPara(m.paraIdx) : focusEditorOnCard(m.cardIdx);
+  markCursor = (markCursor + 1) % marks.length;
+  if(ok) showMarkToast('🔖 已跳到標記 ' + shownNumber + ' / ' + marks.length);
+}
+function markPreviewText(m){
+  const raw = m.paraIdx != null ? scrollParaRegistry[m.paraIdx] : cards[m.cardIdx];
+  if(!raw) return '（找不到內容）';
+  return raw.replace(/\n+/g, ' ').trim().slice(0, 22);
+}
+function renderMarkDropdown(){
+  const dd = document.getElementById('markDropdown');
+  if(marks.length === 0){
+    dd.innerHTML = '<div class="mark-dropdown-empty">目前還沒有標記<br>投放時按畫面上的 🔖 或按 M 鍵標記</div>';
+    return;
+  }
+  dd.innerHTML = marks.map((m, i) =>
+    '<div class="mark-item" data-idx="' + i + '">' +
+      '<span class="mark-item-num">' + (i+1) + '</span>' +
+      '<span class="mark-item-text">' + escapeHtml(markPreviewText(m)) + '</span>' +
+      '<span class="mark-item-del" data-del="' + i + '" title="移除這個標記">✕</span>' +
+    '</div>'
+  ).join('');
+}
+document.getElementById('markBtn').addEventListener('click', addMark);
+document.getElementById('jumpMarkBtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  renderMarkDropdown();
+  document.getElementById('markDropdown').classList.toggle('show');
+});
+document.getElementById('markDropdown').addEventListener('click', (e)=>{
+  const delTarget = e.target.closest('[data-del]');
+  if(delTarget){
+    e.stopPropagation();
+    const delIdx = parseInt(delTarget.getAttribute('data-del'), 10);
+    marks.splice(delIdx, 1);
+    updateMarkBtnLabel();
+    renderMarkDropdown();
+    return;
+  }
+  const item = e.target.closest('.mark-item');
+  if(!item) return;
+  const idx = parseInt(item.getAttribute('data-idx'), 10);
+  const m = marks[idx];
+  const ok = m.paraIdx != null ? focusEditorOnScrollPara(m.paraIdx) : focusEditorOnCard(m.cardIdx);
+  if(ok) showMarkToast('🔖 已跳到標記 ' + (idx+1) + ' / ' + marks.length);
+  document.getElementById('markDropdown').classList.remove('show');
+});
+document.addEventListener('click', (e)=>{
+  const wrap = document.querySelector('.mark-nav-wrap');
+  if(wrap && !wrap.contains(e.target)){
+    document.getElementById('markDropdown').classList.remove('show');
+  }
+});
+
 /* ---------------- 雙視窗模式：暫時返回編輯畫面（投放視窗不關閉） ---------------- */
 document.getElementById('editModeBtn').addEventListener('click', ()=>{
   stopAutoScroll();
   clearTimeout(countdownTimer);
+  // 要先量好目前位置再把 stage 藏起來（捲動模式要靠 stage 目前的捲動位置換算），
+  // 但實際 focus／設定選取範圍要等 setup 真的變成看得到（display:flex）之後才有效——
+  // 之前的 bug 就是在 setup 還是 display:none 的時候就呼叫，對隱藏的 textarea 呼叫
+  // focus/setSelectionRange 沒有效果，所以退回編輯永遠回到最上面。
+  // 捲動模式用「段」等級定位（getCurrentScrollParaIndex），不是「頁」等級，
+  // 因為捲動模式常常整份逐字稿只有一頁，用頁級定位等於沒定位。
+  const scrollParaIdx = scrollMode ? getCurrentScrollParaIndex() : -1;
+  const presentCardIdx = cardIndex;
   document.getElementById('stage').style.display = 'none';
   document.getElementById('setup').style.display = 'flex';
+  if(scrollMode) focusEditorOnScrollPara(scrollParaIdx); else focusEditorOnCard(presentCardIdx);
   updateClosePresentBtnVisibility();
 });
 
@@ -1023,20 +1397,28 @@ async function openPresentWindow(){
   let top = window.screenY;
   let width = 1280, height = 720;
 
-  // 若瀏覽器支援 Window Management API，嘗試自動找出「另一個螢幕」並直接鋪滿過去
-  if('getScreenDetails' in window){
+  // 若瀏覽器支援 Window Management API，「而且使用者之前已經同意過權限」，
+  // 才嘗試自動找出「另一個螢幕」——這裡刻意不要主動觸發權限詢問，
+  // 因為那是瀏覽器原生的 UI 提示，跳出來的當下畫面會明顯卡住/停頓，
+  // 而且不一定會被注意到（尤其投放時眼睛不在螢幕上），程式碼沒辦法讓它不卡、也沒辦法讓它消失。
+  // 沒有事先同意過的話，就直接用預設 fallback 位置，使用者自己把視窗拖到另一個螢幕即可。
+  if('getScreenDetails' in window && navigator.permissions){
     try{
-      const details = await window.getScreenDetails();
-      const current = details.currentScreen;
-      const other = details.screens.find(s => s !== current);
-      if(other){
-        left = other.availLeft;
-        top = other.availTop;
-        width = other.availWidth;
-        height = other.availHeight;
+      const status = await navigator.permissions.query({ name: 'window-management' });
+      if(status.state === 'granted'){
+        const timeout = new Promise((_, reject) => setTimeout(()=>reject(new Error('timeout')), 1500));
+        const details = await Promise.race([window.getScreenDetails(), timeout]);
+        const current = details.currentScreen;
+        const other = details.screens.find(s => s !== current);
+        if(other){
+          left = other.availLeft;
+          top = other.availTop;
+          width = other.availWidth;
+          height = other.availHeight;
+        }
       }
     }catch(e){
-      // 使用者拒絕授權或瀏覽器不支援，維持預設 fallback 位置
+      // 權限查詢失敗、逾時、或瀏覽器不支援，維持預設 fallback 位置
     }
   }
 
@@ -1055,15 +1437,10 @@ async function openPresentWindow(){
     document.getElementById('editModeBtn').style.display = 'none';
     setFlipH(document.getElementById('flipHToggle').checked);
     setFlipV(document.getElementById('flipVToggle').checked);
-    alert(
-      '無法開啟投放視窗。\n\n' +
-      '這通常是因為這個檔案是用「直接雙擊 file:// 開啟」的方式打開——Chrome 基於安全限制，\n' +
-      '不允許本機檔案這樣開啟第二個視窗（即使是同一個檔案也一樣）。\n\n' +
-      '雙視窗模式已自動關閉，改用單視窗模式繼續投放，不影響現在的操作。\n\n' +
-      '如果之後真的需要雙視窗模式，需要把這個 HTML 檔案放到網頁伺服器上開啟\n' +
-      '（例如本機 http://localhost、或部署到 GitHub Pages／Firebase Hosting），\n' +
-      '不能用「檔案總管雙擊打開」的方式。'
-    );
+    // 這裡原本用 alert()，但 alert() 是封鎖式對話框，瀏覽器會被迫自動退出全螢幕才能顯示它，
+    // 而且會卡住整個頁面直到使用者按下確定——在投放中這樣等於整個畫面突然卡住/退出全螢幕。
+    // 改成不會打斷操作的 toast 提示，訊息維持在畫面上久一點，讓使用者看得到但不會卡流程。
+    showMarkToast('雙視窗開不起來（file:// 限制），已自動改用單視窗繼續投放', 4500);
     if(!document.fullscreenElement){
       enterFullscreen();
     }
@@ -1218,7 +1595,7 @@ let wheelPageLock = false;
 stageEl.addEventListener('wheel', (e)=>{
   if(e.ctrlKey) return;               // ctrl+滾輪是縮放，交給上面那個處理
   if(isPresentReceiver) return;       // 投放接收視窗不自己處理，統一由控制視窗操作
-  if(scrollMode) return;              // 捲動模式本來就靠原生滾動，不需要這段
+  if(scrollMode) return;              // 捲動模式改由下面專門的平滑捲動處理
   if(stageEl.style.display !== 'flex') return;
   if(Math.abs(e.deltaY) < 12) return; // 太小的抖動忽略
   e.preventDefault();
@@ -1226,6 +1603,42 @@ stageEl.addEventListener('wheel', (e)=>{
   wheelPageLock = true;
   setTimeout(()=>{ wheelPageLock = false; }, 260);
   if(e.deltaY > 0) nextCard(); else prevCard();
+}, { passive:false });
+
+/* 捲動模式：自己接手滑鼠滾輪捲動，改成平滑趨近目標位置，
+   避免原生滾輪一格一格跳（尤其滑鼠滾輪，不像觸控板有慣性）造成畫面抖動。
+   累加每次滾動的位移到一個目標值，再用 rAF 緩動趨近，讓捲動速度連續、不頓；
+   同時把單次滾輪事件的位移量夾在一個上限內，避免某些滑鼠滾輪一次回報一大段
+   造成瞬間跳動、看起來像抖動。 */
+let scrollWheelTarget = null;
+let scrollWheelRAF = null;
+const SCROLL_WHEEL_MAX_STEP = 140; // 單次滾輪事件最多累加多少 px，避免忽大忽小的跳動
+function scrollWheelTick(){
+  if(scrollWheelTarget == null){ scrollWheelRAF = null; return; }
+  const current = stageMainEl.scrollTop;
+  const diff = scrollWheelTarget - current;
+  if(Math.abs(diff) < 0.5){
+    stageMainEl.scrollTop = scrollWheelTarget;
+    scrollWheelTarget = null;
+    scrollWheelRAF = null;
+    syncPresent('tick');
+    return;
+  }
+  stageMainEl.scrollTop = current + diff * 0.22; // 緩動係數，數字越小越滑順但反應稍慢
+  syncPresent('tick');
+  scrollWheelRAF = requestAnimationFrame(scrollWheelTick);
+}
+stageEl.addEventListener('wheel', (e)=>{
+  if(e.ctrlKey) return;               // ctrl+滾輪是縮放，交給上面處理
+  if(isPresentReceiver) return;
+  if(!scrollMode) return;
+  if(stageEl.style.display !== 'flex') return;
+  e.preventDefault();
+  const maxScroll = Math.max(0, stageMainEl.scrollHeight - stageMainEl.clientHeight);
+  const base = scrollWheelTarget != null ? scrollWheelTarget : stageMainEl.scrollTop;
+  const clampedDelta = Math.max(-SCROLL_WHEEL_MAX_STEP, Math.min(SCROLL_WHEEL_MAX_STEP, e.deltaY));
+  scrollWheelTarget = Math.min(maxScroll, Math.max(0, base + clampedDelta));
+  if(!scrollWheelRAF) scrollWheelRAF = requestAnimationFrame(scrollWheelTick);
 }, { passive:false });
 
 let gestureBaseScale = 1;
@@ -1253,13 +1666,27 @@ function computePresentFontSize(){
   cards.forEach(raw=>{
     if(raw.trim() === '!COUNTDOWN!') return; // 倒數頁用自己的排版，不參與共用字級計算
     cardTextEl.innerHTML = paragraphsHtml(raw);
-    let size = maxSize;
-    cardTextEl.style.fontSize = size + 'px';
-    while(size > minSize && cardTextEl.scrollHeight > available){
-      size -= 2;
-      cardTextEl.style.fontSize = size + 'px';
+    // 先試最大字級：短內容通常一次就過，這樣跟原本一樣快，不用多繞一圈。
+    // 只有真的放不下、需要縮小很多的長內容，才會用到下面的二分搜尋。
+    cardTextEl.style.fontSize = maxSize + 'px';
+    let best;
+    if(cardTextEl.scrollHeight <= available){
+      best = maxSize;
+    } else {
+      let lo = minSize, hi = maxSize - 1;
+      best = minSize;
+      while(lo <= hi){
+        const mid = (lo + hi) >> 1;
+        cardTextEl.style.fontSize = mid + 'px';
+        if(cardTextEl.scrollHeight <= available){
+          best = mid;
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
     }
-    if(size < uniform) uniform = size;
+    if(best < uniform) uniform = best;
   });
   cardTextEl.innerHTML = originalHTML;
   cardTextEl.style.fontSize = originalFontSize;
@@ -1286,7 +1713,11 @@ let scrollMode = false;
 document.getElementById('startBtn').addEventListener('click', ()=>{
   if(cards.length === 0) return;
   dualWindowMode = document.getElementById('dualWindowToggle').checked;
-  cardIndex = 0;
+  // 從編輯器目前「畫面上看到」的段落開始投放（用捲動位置，不是文字游標，見上方說明）
+  const editorPos = getEditorScrollCharOffset();
+  const startCardIdx = getCardIndexAtCursor(editorPos);
+  const startScrollParaIdx = getScrollParaIndexAtCursor(editorPos);
+  cardIndex = Math.max(0, Math.min(cards.length - 1, startCardIdx));
   const stageEl2 = document.getElementById('stage');
   document.getElementById('setup').style.display = 'none';
   stageEl2.style.display = 'flex';
@@ -1315,6 +1746,7 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
 
   if(scrollMode){
     renderScrollContent();
+    scrollStageToPara(startScrollParaIdx); // renderScrollContent 內部預設捲到頂端，這裡覆寫成游標所在段落
   } else {
     buildDots();
     renderCard();
@@ -1328,7 +1760,7 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
 function updateExitHint(){
   const hint = document.querySelector('.exit-hint');
   hint.textContent = scrollMode
-    ? 'Esc 返回設定 ｜ PageUp/PageDown、← → ↑ ↓ 或滾輪捲動畫面 ｜ P 自動捲動開關 ｜ +/－ 調整文字大小、0 重設'
+    ? 'Esc 返回設定 ｜ PageUp/PageDown、← → ↑ ↓ 或滾輪捲動畫面 ｜ 空白鍵／P 自動捲動播放・暫停 ｜ +/－ 調整文字大小、0 重設'
     : 'Esc 返回設定 ｜ PageUp/PageDown、← → 或空白鍵翻頁 ｜ +/－ 調整文字大小、0 重設';
 }
 
@@ -1343,17 +1775,23 @@ function buildDots(){
   document.getElementById('pageTotal').textContent = cards.length;
 }
 
-function paragraphsHtml(raw){
+// registry 是選填的陣列：捲動模式用得到，因為捲動模式常常整份逐字稿只有一頁
+// （使用者根本沒有用「---」分頁），這時候光靠「第幾頁」完全不夠精準定位游標，
+// 需要精確到「第幾段」，所以這裡把每一段的原始文字依畫面出現順序記下來，
+// 並且在對應的 DOM 元素上標記 data-pidx，兩邊用同一份索引對起來。
+function paragraphsHtml(raw, registry){
   const paragraphs = raw.split(/\n{2,}/).map(p => p.trim()).filter(p => p.length > 0);
   return paragraphs.map(p => {
+    const pidx = registry ? (registry.push(p) - 1) : -1;
+    const pidxAttr = registry ? (' data-pidx="' + pidx + '"') : '';
     if(p === '!COUNTDOWN!'){
-      return '<div class="countdown-static">' +
+      return '<div class="countdown-static"' + pidxAttr + '>' +
         '<span class="cs-label">現場準備</span>' +
         '<span>3</span><span>2</span><span>1</span>' +
         '<span class="cs-dot"></span>' +
       '</div>';
     }
-    return '<div class="para">' + escapeHtml(p).replace(/\n/g, '<br>') + '</div>';
+    return '<div class="para"' + pidxAttr + '>' + escapeHtml(p).replace(/\n/g, '<br>') + '</div>';
   }).join('');
 }
 
@@ -1409,9 +1847,12 @@ function runCountdownSequence(){
   step();
 }
 
+let scrollParaRegistry = []; // 捲動模式專用：畫面上第 N 段對應的原始文字（見 paragraphsHtml 說明）
+
 function renderScrollContent(){
+  scrollParaRegistry = [];
   const html = cards.map((c, i) =>
-    '<div class="scroll-section" data-section="' + i + '">' + paragraphsHtml(c) + '</div>'
+    '<div class="scroll-section" data-section="' + i + '">' + paragraphsHtml(c, scrollParaRegistry) + '</div>'
   ).join('<div class="scroll-divider"></div>');
   document.getElementById('cardText').innerHTML = html;
   document.getElementById('pageNum').textContent = '∞';
@@ -1430,7 +1871,15 @@ function updateScrollEndSpacer(){
   if(!scrollMode) return;
   cardTextEl.style.paddingBottom = Math.max(0, stageMainEl.clientHeight - 80) + 'px';
 }
-window.addEventListener('resize', ()=>{ if(scrollMode) updateScrollEndSpacer(); });
+let scrollEndSpacerTimer = null;
+window.addEventListener('resize', ()=>{
+  if(!scrollMode) return;
+  clearTimeout(scrollEndSpacerTimer);
+  scrollEndSpacerTimer = setTimeout(updateScrollEndSpacer, 120);
+});
+document.addEventListener('fullscreenchange', ()=>{
+  if(scrollMode) setTimeout(updateScrollEndSpacer, 150);
+});
 
 function getSectionScrollTop(sec){
   // 用實際渲染位置換算，不用 offsetTop —— 這樣不管文字被放大縮小多少，算出來的位置永遠準確
@@ -1524,7 +1973,6 @@ function handleStageKey(key, preventDefault){
       case 'PageDown':
       case 'ArrowRight':
       case 'ArrowDown':
-      case ' ':
         if(preventDefault) preventDefault();
         stageMainEl.scrollBy({ top: stageMainEl.clientHeight * 0.55, behavior:'smooth' });
         syncPresent('tick');
@@ -1546,11 +1994,21 @@ function handleStageKey(key, preventDefault){
         if(preventDefault) preventDefault(); scaleReset(); break;
       case 'p':
       case 'P':
+      case ' ':
+        // 空白鍵改成跟 P 一樣：切換自動捲動播放／暫停（原本空白鍵是翻頁下移，容易跟暫停需求衝突）
         if(preventDefault) preventDefault(); toggleAutoScroll(); break;
+      case 'm':
+      case 'M':
+        if(preventDefault) preventDefault(); addMark(); break;
       case 'Escape':
         stopAutoScroll();
-        document.getElementById('stage').style.display = 'none';
-        document.getElementById('setup').style.display = 'flex';
+        {
+          // 用「段」等級定位（不是「頁」），因為捲動模式常常整份逐字稿只有一頁
+          const targetIdx = getCurrentScrollParaIndex(); // 要趁 stage 還沒隱藏、捲動位置還在時先量好
+          document.getElementById('stage').style.display = 'none';
+          document.getElementById('setup').style.display = 'flex';
+          focusEditorOnScrollPara(targetIdx);
+        }
         pauseTimer();
         if(presentWin && !presentWin.closed) presentWin.close();
         break;
@@ -1574,10 +2032,14 @@ function handleStageKey(key, preventDefault){
       if(preventDefault) preventDefault(); scaleDown(); break;
     case '0':
       if(preventDefault) preventDefault(); scaleReset(); break;
+    case 'm':
+    case 'M':
+      if(preventDefault) preventDefault(); addMark(); break;
     case 'Escape':
       clearTimeout(countdownTimer);
       document.getElementById('stage').style.display = 'none';
       document.getElementById('setup').style.display = 'flex';
+      focusEditorOnCard(cardIndex);
       pauseTimer();
       if(presentWin && !presentWin.closed) presentWin.close();
       break;
@@ -1588,7 +2050,7 @@ document.addEventListener('keydown', (e)=>{
   if(isPresentReceiver){
     // 萬一焦點不小心跑到投放視窗（外接螢幕那邊），把按鍵轉發回控制視窗繼續處理，
     // 避免簡報筆按鍵被投放視窗默默吃掉、變成翻不動頁/捲不動的情況
-    const forwardKeys = ['PageDown','PageUp','ArrowRight','ArrowLeft','ArrowUp','ArrowDown',' ','+','=','-','_','0','p','P','Escape'];
+    const forwardKeys = ['PageDown','PageUp','ArrowRight','ArrowLeft','ArrowUp','ArrowDown',' ','+','=','-','_','0','p','P','m','M','Escape'];
     if(forwardKeys.includes(e.key) && window.opener){
       e.preventDefault();
       try{ window.opener.postMessage({ type:'key', key:e.key }, '*'); }catch(err){}
