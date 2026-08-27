@@ -436,6 +436,7 @@
   .top-right-controls{
     display:flex; align-items:center; gap:10px;
   }
+  .secondary-controls{ display:flex; align-items:center; gap:10px; }
   .scale-controls{
     display:flex; align-items:center; gap:2px;
     background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:4px;
@@ -541,10 +542,13 @@
   }
 
   ::selection{ background:var(--amber); color:#000; }
+  #mobileBackBtn{ display:none; }
   /* ---------- RWD：手機／平板（例如 iPad）---------- */
   @media (max-width: 820px){
     /* 雙視窗、搜尋這類桌機導向的功能，在小螢幕上不需要也不好操作，直接隱藏 */
     .desktop-only-feature{ display:none !important; }
+    /* 簡報模式在小螢幕上還不穩定，先隱藏頁籤，固定用捲動模式 */
+    .tabs{ display:none !important; }
 
     body{ overflow-y:auto; overflow-x:hidden; }
     #setup{ height:auto; min-height:100vh; align-items:flex-start; padding:16px; }
@@ -552,22 +556,40 @@
     .eyebrow-big{ font-size:16px; }
     .brand-logo{ height:26px; }
 
-    .tabs{ flex-direction:column; }
     .insert-row{ gap:6px; }
     .insert-btn, .start-btn{ font-size:12px; padding:8px 12px; }
     .switches-row{ gap:12px 16px; }
     .margin-setup{ gap:6px 8px; }
     .margin-setup input{ width:44px; }
 
-    /* 投放畫面：工具列改用自動換行，按鈕稍微縮小，觸控也比較好按 */
+    /* 投放畫面：上方只留頁碼、縮放跟自動捲動速度，其他次要功能（翻轉/標記/計時器/全螢幕）在底部 */
     .stage-top{ flex-wrap:wrap; gap:8px; padding:12px 14px 0 14px; }
     .top-right-controls{ flex-wrap:wrap; justify-content:flex-end; row-gap:8px; }
     .mini-btn{ width:38px; height:38px; }
     .stage-main{ padding-left:24px; padding-right:24px; }
     #timerWidget{ transform:scale(.7); transform-origin:bottom right; }
     #timerWidget.timer-top{ transform:translateX(-50%) scale(.7); transform-origin:top center; }
-    .section-nav{ bottom:8px; }
+    .section-nav{ bottom:66px; } /* 讓開底部固定的次要控制列，避免重疊 */
     .section-nav-btn{ font-size:11px; padding:6px 12px; }
+
+    /* 次要按鈕（翻轉/計時器/全螢幕等）移到畫面底部一整排，上方只留縮放跟自動捲動速度 */
+    .secondary-controls{
+      position:fixed; bottom:52px; left:50%; transform:translateX(-50%);
+      background:rgba(20,23,28,.8); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+      border:1px solid var(--line); border-radius:14px; padding:6px 8px;
+      z-index:55; flex-wrap:wrap; justify-content:center; max-width:94vw; gap:6px;
+    }
+    .secondary-controls .mini-btn{ width:34px; height:34px; font-size:12px; }
+
+    /* 觸控裝置沒有 Esc 鍵，補一個明顯的返回編輯按鈕 */
+    #mobileBackBtn{
+      display:flex; position:fixed; top:14px; left:14px; z-index:56;
+      align-items:center; gap:4px; padding:8px 14px; border-radius:10px;
+      border:1px solid var(--line); background:rgba(20,23,28,.85);
+      backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+      color:var(--text-dim); font-size:12px; font-weight:600; cursor:pointer;
+    }
+    #mobileBackBtn:active{ border-color:var(--amber); color:var(--amber); }
   }
   @media (max-width: 480px){
     .top-right-controls > *{ transform:scale(.92); }
@@ -598,9 +620,9 @@
       <input type="file" id="fileInput" accept=".docx">
       <div class="insert-row">
         <button class="insert-btn" id="insertDividerBtn" type="button" title="快捷鍵：在文字框內按 Tab">＋ 插入分頁線</button>
-        <button class="insert-btn insert-btn-spacer" id="insertCountdownBtn" type="button" title="插入一個獨立的倒數頁：現場準備 → 3 → 2 → 1 → 綠轉紅開始標示">＋ 加入倒數</button>
-        <button class="insert-btn insert-btn-upload" id="uploadWordBtn" type="button">📄 上傳 Word (.docx)</button>
-        <div class="count-preview" id="cardCount">目前頁數：0</div>
+        <button class="insert-btn insert-btn-spacer" id="insertCountdownBtn" type="button" title="固定插入在文件最前面（開場用）：現場準備 → 3 → 2 → 1 → 綠轉紅開始標示">＋ 加入倒數</button>
+        <button class="insert-btn insert-btn-upload desktop-only-feature" id="uploadWordBtn" type="button">📄 上傳 Word (.docx)</button>
+        <div class="count-preview desktop-only-feature" id="cardCount">目前頁數：0</div>
         <button class="start-btn" id="startBtn" disabled>開始投放 →</button>
       </div>
       <div class="file-ok" id="fileStatus"></div>
@@ -662,13 +684,15 @@
         <div class="scale-label mono" id="scaleLabel">100%</div>
         <button class="mini-btn" id="scaleUpBtn" title="放大文字">A+</button>
       </div>
-      <button class="mini-btn" id="flipHBtn" title="水平翻轉（左右鏡射，適合提詞機鏡面）">⇋</button>
-      <button class="mini-btn" id="flipVBtn" title="垂直翻轉（上下顛倒）">⇕</button>
-      <button class="mini-btn" id="markBtn" title="標記這一段，之後回編輯畫面可以快速跳過來改（快捷鍵：M）">🔖</button>
-      <button class="mini-btn" id="editModeBtn" title="暫時返回編輯畫面（投放視窗保持開啟，改完內容再按開始投放套用）" style="display:none;">Edit</button>
-      <button class="mini-btn" id="timerToggleBtn" title="顯示／隱藏計時器">⏱</button>
-      <button class="mini-btn" id="timerPosBtn" title="計時器位置：右下角／正上方置中">⤒</button>
-      <button class="mini-btn" id="fsBtn" title="全螢幕">⛶</button>
+      <div class="secondary-controls" id="secondaryControls">
+        <button class="mini-btn" id="flipHBtn" title="水平翻轉（左右鏡射，適合提詞機鏡面）">⇋</button>
+        <button class="mini-btn" id="flipVBtn" title="垂直翻轉（上下顛倒）">⇕</button>
+        <button class="mini-btn" id="markBtn" title="標記這一段，之後回編輯畫面可以快速跳過來改（快捷鍵：M）">🔖</button>
+        <button class="mini-btn" id="editModeBtn" title="暫時返回編輯畫面（投放視窗保持開啟，改完內容再按開始投放套用）" style="display:none;">Edit</button>
+        <button class="mini-btn" id="timerToggleBtn" title="顯示／隱藏計時器">⏱</button>
+        <button class="mini-btn" id="timerPosBtn" title="計時器位置：右下角／正上方置中">⤒</button>
+        <button class="mini-btn" id="fsBtn" title="全螢幕">⛶</button>
+      </div>
     </div>
   </div>
 
@@ -689,6 +713,7 @@
   </div>
 
   <div class="exit-hint">Esc 返回設定 ｜ PageUp/PageDown、← → 或空白鍵翻頁 ｜ +/－ 調整文字大小、0 重設</div>
+  <button id="mobileBackBtn" type="button" title="返回編輯畫面">← 返回編輯</button>
 
   <div id="sectionNav" class="section-nav">
     <button class="section-nav-btn" id="prevSectionBtn" type="button" title="跳到上一段分頁線">◀ 上一段</button>
@@ -921,13 +946,10 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     scrollMode = (btn.dataset.mode === 'scroll');
-    if(scrollMode && !pasteArea.value.includes('!COUNTDOWN!')){
-      const sep = pasteArea.value.length > 0 ? '\n\n' : '';
-      pasteArea.value = '!COUNTDOWN!' + sep + pasteArea.value;
-      cards = splitToCards(pasteArea.value);
-      updatePreview();
-      renderBackdrop();
-    }
+    // 注意：這裡故意不自動插入倒數。兩種模式共用同一份文字內容，
+    // 之前切到捲動模式會自動加倒數，會偷偷改動內容，導致切回簡報模式時
+    // 頁數/段落被打亂（多了一頁使用者沒注意到的倒數頁）。
+    // 現在完全交由使用者自己按下面的「＋加入倒數」決定要不要加、加在哪裡。
   });
 });
 
@@ -957,24 +979,22 @@ pasteArea.addEventListener('keydown', (e)=>{
 
 const insertCountdownBtn = document.getElementById('insertCountdownBtn');
 insertCountdownBtn.addEventListener('click', ()=>{
-  const start = pasteArea.selectionStart;
-  const end = pasteArea.selectionEnd;
-  const before = pasteArea.value.slice(0, start);
-  const after = pasteArea.value.slice(end);
+  // 倒數幾乎都是開場用的，固定插入在文件最前面，不管游標目前在哪裡——
+  // 之前是插在游標處，如果剛打完內容、游標自然留在最後面，倒數就會被加到最後面去，
+  // 投放時就變成倒數最後才播放，不是一開始，跟預期完全相反。
+  const rest = pasteArea.value;
   let insertText;
   if(scrollMode){
     // 捲動模式：不用分頁線，只用空行讓它自成一個區塊即可
-    const lead = before.length === 0 ? '' : (before.endsWith('\n\n') ? '' : (before.endsWith('\n') ? '\n' : '\n\n'));
-    const trail = after.length === 0 ? '' : (after.startsWith('\n\n') ? '' : (after.startsWith('\n') ? '\n' : '\n\n'));
-    insertText = lead + '!COUNTDOWN!' + trail;
+    const trail = rest.length === 0 ? '' : (rest.startsWith('\n\n') ? '' : (rest.startsWith('\n') ? '\n' : '\n\n'));
+    insertText = '!COUNTDOWN!' + trail;
   } else {
     // 簡報模式：倒數要自成一整頁，才能觸發翻到那頁時自動播放
-    const lead = before.length === 0 ? '' : '\n---\n';
-    const trail = after.length === 0 ? '' : '\n---\n';
-    insertText = lead + '!COUNTDOWN!' + trail;
+    const trail = rest.length === 0 ? '' : '\n---\n';
+    insertText = '!COUNTDOWN!' + trail;
   }
-  pasteArea.value = before + insertText + after;
-  const newPos = (before + insertText).length;
+  pasteArea.value = insertText + rest;
+  const newPos = insertText.length;
   pasteArea.focus({ preventScroll: true });
   pasteArea.setSelectionRange(newPos, newPos);
   cards = splitToCards(pasteArea.value);
@@ -1071,6 +1091,7 @@ function toggleFullscreen(){
   }
 }
 document.getElementById('fsBtn').addEventListener('click', toggleFullscreen);
+document.getElementById('mobileBackBtn').addEventListener('click', ()=> handleStageKey('Escape'));
 
 /* ---------------- 回到編輯畫面時，把游標／捲動位置定位到「剛剛正在投放看的那一段」 ----------------
    簡報模式看 cardIndex；捲動模式看目前捲動到哪一段（section），
@@ -1097,10 +1118,25 @@ function scrollEditorToTextPos(pos){
   pasteArea.scrollTop = target;
   pasteBackdrop.scrollTop = target;
 }
+// 依序往前搜尋出「第 idx 個」項目在文字裡的實際位置，每次都從上一個找到的位置之後繼續找——
+// 不能只用 pasteArea.value.indexOf(target)，因為如果同樣的文字在文件裡出現超過一次
+// （例如重複的過場語、相似的簡短段落），indexOf 永遠只會找到第一次出現的地方，
+// 不管實際要找的是第幾個，這是「有時候段落/頁面定位錯誤」的真正原因。
+function findNthTextPosition(list, idx){
+  let searchFrom = 0;
+  let pos = -1;
+  for(let i = 0; i <= idx; i++){
+    if(!list[i]) return -1;
+    pos = pasteArea.value.indexOf(list[i], searchFrom);
+    if(pos === -1) return -1;
+    searchFrom = pos + list[i].length;
+  }
+  return pos;
+}
 function focusEditorOnCard(idx){
   if(!cards[idx]){ showMarkToast('跳轉失敗（找不到這一頁）'); return false; }
   const target = cards[idx];
-  const pos = pasteArea.value.indexOf(target);
+  const pos = findNthTextPosition(cards, idx);
   if(pos === -1){ showMarkToast('跳轉失敗（內容可能已經被改過）'); return false; }
   pasteArea.focus({ preventScroll: true });
   pasteArea.setSelectionRange(pos, pos + target.length);
@@ -1125,7 +1161,7 @@ function getCurrentScrollParaIndex(){
 function focusEditorOnScrollPara(idx){
   if(idx == null || idx < 0 || !scrollParaRegistry[idx]){ showMarkToast('跳轉失敗（找不到這一段）'); return false; }
   const target = scrollParaRegistry[idx];
-  const pos = pasteArea.value.indexOf(target);
+  const pos = findNthTextPosition(scrollParaRegistry, idx);
   if(pos === -1){ showMarkToast('跳轉失敗（內容可能已經被改過）'); return false; }
   pasteArea.focus({ preventScroll: true });
   pasteArea.setSelectionRange(pos, pos + target.length);
@@ -1134,12 +1170,18 @@ function focusEditorOnScrollPara(idx){
   return true;
 }
 
+
 /* ---------------- 反過來：開始投放時，從編輯器「目前看到的段落」開始投放 ----------------
    一開始用文字游標（selectionStart）判斷位置，但實測發現不準——因為使用者是「滑動捲軸」
    看到某一段就按開始投放，滑動捲軸本身不會移動文字游標，游標還停在上次點擊/打字的地方，
    兩者常常對不上。改成直接量「編輯框目前捲動到哪一行」（跟 pasteBackdrop 逐行對照），
    換算成字元位置，這樣不管是用滑鼠捲動還是點擊游標，都是看畫面上「現在看到的那一段」。 */
 function getEditorScrollCharOffset(){
+  // 讀取前先強制同步一次背景高亮層的捲動位置——
+  // 背景同步是靠 scroll 事件跟一個 120ms 的持續校正機制，兩者之間有極短的時間差；
+  // 如果剛好在這個時間差之內按下開始投放，讀到的會是還沒跟上的舊捲動位置，
+  // 導致「有時候」投放位置跟編輯器實際位置對不上。這裡直接讀取前先同步一次，徹底避免這個時間差。
+  pasteBackdrop.scrollTop = pasteArea.scrollTop;
   const lineDivs = Array.from(pasteBackdrop.children);
   if(lineDivs.length === 0) return 0;
   const containerRect = pasteBackdrop.getBoundingClientRect();
@@ -1350,6 +1392,22 @@ function syncSwitch(id){
   const cb = document.getElementById(id);
   cb.addEventListener('change', ()=> syncSwitch(id));
 });
+// 設定畫面的水平/垂直翻轉開關也要互斥：不然使用者可以在還沒開始投放前同時勾選兩個，
+// 等按下開始投放時，兩邊用各自寫死的舊值互相打架，結果變得不可預期
+document.getElementById('flipHToggle').addEventListener('change', function(){
+  if(this.checked){
+    const other = document.getElementById('flipVToggle');
+    other.checked = false;
+    syncSwitch('flipVToggle');
+  }
+});
+document.getElementById('flipVToggle').addEventListener('change', function(){
+  if(this.checked){
+    const other = document.getElementById('flipHToggle');
+    other.checked = false;
+    syncSwitch('flipHToggle');
+  }
+});
 
 /* ---------------- 螢幕翻轉即時切換 ----------------
    雙視窗模式關閉時：本機畫面直接翻轉（單一視窗，使用者自己把整個視窗搬去外接螢幕）
@@ -1360,6 +1418,12 @@ function setFlipH(on){
   syncSwitch('flipHToggle');
   document.getElementById('flipHBtn').classList.toggle('active', on);
   document.getElementById('stage').classList.toggle('flip-h', on && !dualWindowMode);
+  // 水平/垂直翻轉互斥：兩個同時開會變成整個畫面轉 180 度、文字完全無法閱讀，
+  // 這種組合沒有任何實際提詞機用途，開一個就自動關掉另一個
+  if(on && document.getElementById('flipVToggle').checked){
+    setFlipV(false);
+    return;
+  }
   updateTimerTransform();
   syncPresent('full');
 }
@@ -1369,6 +1433,10 @@ function setFlipV(on){
   syncSwitch('flipVToggle');
   document.getElementById('flipVBtn').classList.toggle('active', on);
   document.getElementById('stage').classList.toggle('flip-v', on && !dualWindowMode);
+  if(on && document.getElementById('flipHToggle').checked){
+    setFlipH(false);
+    return;
+  }
   updateTimerTransform();
   syncPresent('full');
 }
@@ -1708,7 +1776,8 @@ window.addEventListener('resize', ()=>{
 });
 document.addEventListener('fullscreenchange', ()=> setTimeout(()=>{ presentFontSize = null; fitText(); }, 60));
 
-let scrollMode = false;
+const isMobileLayout = window.matchMedia('(max-width: 820px)').matches;
+let scrollMode = isMobileLayout; // 手機/平板預設用捲動模式，頁籤也會一併隱藏
 
 document.getElementById('startBtn').addEventListener('click', ()=>{
   if(cards.length === 0) return;
@@ -1851,9 +1920,22 @@ let scrollParaRegistry = []; // 捲動模式專用：畫面上第 N 段對應的
 
 function renderScrollContent(){
   scrollParaRegistry = [];
-  const html = cards.map((c, i) =>
-    '<div class="scroll-section" data-section="' + i + '">' + paragraphsHtml(c, scrollParaRegistry) + '</div>'
-  ).join('<div class="scroll-divider"></div>');
+  const html = cards.map((c, i) => {
+    const paras = c.split(/\n{2,}/).map(p=>p.trim()).filter(p=>p.length>0);
+    const cdIdx = paras.findIndex(p => p === '!COUNTDOWN!');
+    if(cdIdx !== -1 && paras.length > 1){
+      // 這張卡片裡的倒數跟其他段落黏在一起（沒有分頁線隔開，維持視覺上不顯示分頁線），
+      // 但為了讓上下段跳轉能正確定位，把倒數獨立包成自己的區塊，不要跟其他段落合併計算範圍
+      let out = '';
+      const before = paras.slice(0, cdIdx).join('\n\n');
+      const after = paras.slice(cdIdx+1).join('\n\n');
+      if(before) out += '<div class="scroll-section" data-section="'+i+'a">' + paragraphsHtml(before, scrollParaRegistry) + '</div>';
+      out += '<div class="scroll-section" data-section="'+i+'b">' + paragraphsHtml(paras[cdIdx], scrollParaRegistry) + '</div>';
+      if(after) out += '<div class="scroll-section" data-section="'+i+'c">' + paragraphsHtml(after, scrollParaRegistry) + '</div>';
+      return out;
+    }
+    return '<div class="scroll-section" data-section="' + i + '">' + paragraphsHtml(c, scrollParaRegistry) + '</div>';
+  }).join('<div class="scroll-divider"></div>');
   document.getElementById('cardText').innerHTML = html;
   document.getElementById('pageNum').textContent = '∞';
   document.getElementById('pageTotal').textContent = cards.length + ' 段';
@@ -1882,16 +1964,31 @@ document.addEventListener('fullscreenchange', ()=>{
 });
 
 function getSectionScrollTop(sec){
-  // 用實際渲染位置換算，不用 offsetTop —— 這樣不管文字被放大縮小多少，算出來的位置永遠準確
-  const secRect = sec.getBoundingClientRect();
-  const containerRect = stageMainEl.getBoundingClientRect();
+  // 沿著 offsetParent 鏈往上累加到 stageMainEl 為止，這樣不管中間哪一層剛好是 offsetParent
+  // （卡片層級的 .scroll-section 和段落層級的 [data-pidx] 的 offsetParent 剛好不一樣），
+  // 得到的都是相對 stageMainEl 的正確版面位置，不受翻轉等 CSS transform 影響
+  let top = 0;
+  let el = sec;
+  let guard = 0;
+  while(el && el !== stageMainEl && guard++ < 20){
+    top += el.offsetTop || 0;
+    el = el.offsetParent;
+  }
   const topBuffer = 10; // 留一點點緩衝，避免文字第一行剛好卡在最邊緣
-  return stageMainEl.scrollTop + (secRect.top - containerRect.top) - topBuffer;
+  return Math.max(0, top - topBuffer);
+}
+
+// 統一取消滾輪緩動動畫：任何「主動跳轉/移動畫面」的地方都要先呼叫這個，
+// 否則殘留的滾輪緩動會在後續畫面更新時把位置拉回去，變成抖動、看起來像功能壞掉
+function cancelWheelEasing(){
+  if(scrollWheelRAF){ cancelAnimationFrame(scrollWheelRAF); scrollWheelRAF = null; }
+  scrollWheelTarget = null;
 }
 
 function jumpSection(direction){
   const sections = Array.from(document.querySelectorAll('.scroll-section'));
   if(sections.length === 0) return;
+  cancelWheelEasing();
   const current = stageMainEl.scrollTop;
   let idx = 0;
   sections.forEach((sec, i)=>{
@@ -1934,6 +2031,7 @@ function autoScrollTick(ts){
   autoScrollRAF = requestAnimationFrame(autoScrollTick);
 }
 function startAutoScroll(){
+  cancelWheelEasing();
   autoScrollOn = true;
   autoScrollLastTs = null;
   autoScrollCarry = 0;
@@ -1974,6 +2072,7 @@ function handleStageKey(key, preventDefault){
       case 'ArrowRight':
       case 'ArrowDown':
         if(preventDefault) preventDefault();
+        cancelWheelEasing();
         stageMainEl.scrollBy({ top: stageMainEl.clientHeight * 0.55, behavior:'smooth' });
         syncPresent('tick');
         break;
@@ -1981,6 +2080,7 @@ function handleStageKey(key, preventDefault){
       case 'ArrowLeft':
       case 'ArrowUp':
         if(preventDefault) preventDefault();
+        cancelWheelEasing();
         stageMainEl.scrollBy({ top: -stageMainEl.clientHeight * 0.55, behavior:'smooth' });
         syncPresent('tick');
         break;
@@ -2153,6 +2253,11 @@ updateDigits();
 cards = splitToCards(pasteArea.value);
 updatePreview();
 renderBackdrop();
+
+// 手機/平板：計時器預設先藏起來，畫面比較乾淨；使用者還是可以自己按開關打開
+if(isMobileLayout){
+  document.getElementById('timerWidget').classList.add('timer-hidden');
+}
 </script>
 </body>
 </html>
