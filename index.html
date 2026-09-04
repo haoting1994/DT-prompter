@@ -95,6 +95,17 @@
   .eyebrow-sub{
     font-size:12px; font-weight:500; color:var(--text-dim);
   }
+  .header-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px;
+  }
+  .header-row .eyebrow-big{ margin-bottom:0; }
+  .timer-entry-btn{
+    display:inline-flex; align-items:center; gap:6px; flex-shrink:0;
+    padding:6px 12px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--text-dim); font-size:12px; font-weight:600;
+    cursor:pointer; transition:.15s;
+  }
+  .timer-entry-btn:hover{ border-color:var(--teal); color:var(--teal); background:rgba(47,209,196,.1); }
   .sub{ color:var(--text-dim); font-size:12px; margin-bottom:14px; line-height:1.5; }
 
   .tabs{ display:flex; gap:8px; margin-bottom:10px; }
@@ -312,6 +323,24 @@
   #stage.scroll-mode .stage-main{
     overflow-y:auto;
   }
+  /* 整個頁面的滑鼠游標都被隱藏、改用自訂圓點顯示，一般又細又半透明的系統捲軸
+     （尤其 macOS 預設的 overlay 樣式）會變得很難看清楚、很難精準抓到滑塊拖曳。
+     這裡把捲軸加寬、加上明顯的顏色，讓它不需要靠游標定位也能輕鬆看到、抓到。 */
+  #stage.scroll-mode .stage-main::-webkit-scrollbar{
+    width:14px;
+  }
+  #stage.scroll-mode .stage-main::-webkit-scrollbar-track{
+    background:rgba(255,255,255,.05);
+  }
+  #stage.scroll-mode .stage-main::-webkit-scrollbar-thumb{
+    background:rgba(255,255,255,.35); border-radius:7px; border:3px solid transparent; background-clip:padding-box;
+  }
+  #stage.scroll-mode .stage-main::-webkit-scrollbar-thumb:hover{
+    background:rgba(255,255,255,.55); background-clip:padding-box;
+  }
+  #stage.scroll-mode .stage-main{
+    scrollbar-width:auto; scrollbar-color:rgba(255,255,255,.35) rgba(255,255,255,.05);
+  }
   .scroll-divider{
     width:64px; height:2px; background:rgba(255,255,255,.6); border-radius:1px;
     margin:1em 0;
@@ -432,6 +461,47 @@
   .timer-setup input:focus{ border-color:var(--amber); }
   .timer-setup span{ font-size:17px; color:var(--text-dim); }
 
+  /* ---------- 獨立計時器 ---------- */
+  #standaloneTimer{
+    display:none; position:fixed; inset:0; z-index:80;
+    background:var(--bg); flex-direction:column; align-items:center; justify-content:center;
+  }
+  #standaloneTimer.show{ display:flex; }
+  .standalone-fs-btn{ position:absolute; top:24px; right:24px; }
+  .standalone-inner{
+    display:flex; flex-direction:column; align-items:center; gap:4vh; width:100%; max-width:1800px; padding:0 40px;
+  }
+  .standalone-show-name{
+    width:100%; text-align:center; background:transparent; border:none; outline:none;
+    color:var(--text); font-size:clamp(28px, 4.6vw, 60px); font-weight:800; letter-spacing:.02em;
+  }
+  .standalone-show-name::placeholder{ color:var(--text-dim); }
+  .standalone-timer-digits{
+    font-size:clamp(140px, 28vw, 460px); font-weight:800; letter-spacing:.02em; color:var(--text);
+    line-height:1; font-variant-numeric:tabular-nums;
+  }
+  .standalone-timer-digits.warn{ color:var(--amber); }
+  .standalone-timer-digits.over{ color:var(--tally-red); }
+  .standalone-digits-row{
+    display:flex; align-items:center; justify-content:center; gap:clamp(12px, 2vw, 32px);
+  }
+  .standalone-digits-row .tally-dot{
+    width:clamp(16px, 2.4vw, 36px); height:clamp(16px, 2.4vw, 36px);
+  }
+  .standalone-timer-controls{
+    display:flex; align-items:center; gap:18px;
+  }
+  .standalone-timer-controls .timer-btn{ width:64px; height:64px; font-size:24px; }
+  .standalone-play-btn{ background:var(--tally-red) !important; color:#fff !important; border-color:var(--tally-red) !important; }
+  .standalone-play-btn:hover{ filter:brightness(1.1); color:#fff !important; }
+  .standalone-timer-controls .timer-setup input{ width:64px; font-size:22px; padding:10px 4px; }
+  .standalone-prompt-text{
+    width:100%; text-align:center; background:transparent; border:none; outline:none; border-bottom:2px solid var(--line);
+    color:var(--text); font-size:clamp(32px, 6vw, 76px); font-weight:800; padding-bottom:18px;
+  }
+  .standalone-prompt-text::placeholder{ color:var(--text-dim); font-weight:600; }
+  .standalone-prompt-text:focus{ border-bottom-color:var(--teal); }
+
   /* ---------- 右上角控制列：文字縮放 + 全螢幕 ---------- */
   .top-right-controls{
     display:flex; align-items:center; gap:10px;
@@ -466,6 +536,7 @@
     white-space:nowrap; line-height:1; padding:0;
   }
   .mini-btn:hover{ color:var(--amber); border-color:var(--amber); }
+  .standalone-back-btn{ position:absolute; top:24px; left:24px; width:auto; padding:0 16px; font-size:13px; gap:6px; }
   #fsBtn{
     background:var(--panel); font-size:16px;
   }
@@ -605,7 +676,10 @@
 <!-- ===================== SETUP ===================== -->
 <div id="setup">
   <div class="setup-card">
+    <div class="header-row">
     <div class="eyebrow-big"><img src="data:image/png;base64,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AAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgD8AEcDgBAAAAJUlEQVQAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA38Lx47FT+WXF3XAAAAAElFTkSuQmCC" class="brand-logo" alt="logo"><span class="brand-text">PROMPTER</span></div>
+    <button id="openStandaloneTimerBtn" class="timer-entry-btn" type="button">🕐 獨立計時器</button>
+    </div>
 
     <div class="tabs">
       <div class="tab-btn active" data-mode="present">簡報 SLIDE</div>
@@ -718,6 +792,28 @@
   <div id="sectionNav" class="section-nav">
     <button class="section-nav-btn" id="prevSectionBtn" type="button" title="跳到上一段分頁線">◀ 上一段</button>
     <button class="section-nav-btn" id="nextSectionBtn" type="button" title="跳到下一段分頁線">下一段 ▶</button>
+  </div>
+</div>
+
+<!-- ===================== 獨立計時器 ===================== -->
+<div id="standaloneTimer">
+  <button id="standaloneBackBtn" class="mini-btn standalone-back-btn" type="button" title="返回設定（Esc）">← 返回</button>
+  <button id="standaloneFsBtn" class="mini-btn standalone-fs-btn" type="button" title="全螢幕">⛶</button>
+  <div class="standalone-inner">
+    <input type="text" id="standaloneShowName" class="standalone-show-name" placeholder="輸入節目名稱…" maxlength="60" autocomplete="off">
+    <div class="standalone-digits-row">
+      <div class="tally-dot" id="standaloneTallyDot"></div>
+      <div id="standaloneTimerDigits" class="standalone-timer-digits mono">00:00</div>
+    </div>
+    <div class="standalone-timer-controls">
+      <button class="timer-btn" id="standaloneModeBtn" type="button" title="切換 倒數／正數">⇄</button>
+      <div class="timer-setup" id="standaloneCountdownSetup" style="display:none;">
+        <input type="number" id="standaloneMinInput" min="0" max="180" value="5" autocomplete="off"><span>分鐘</span>
+      </div>
+      <button class="timer-btn standalone-play-btn" id="standalonePlayBtn" type="button" title="開始／暫停">▶</button>
+      <button class="timer-btn" id="standaloneResetBtn" type="button" title="重設">↺</button>
+    </div>
+    <input type="text" id="standalonePromptText" class="standalone-prompt-text" placeholder="輸入提示詞，提醒主持人的文字…" maxlength="80" autocomplete="off">
   </div>
 </div>
 
@@ -1675,24 +1771,40 @@ stageEl.addEventListener('wheel', (e)=>{
 
 /* 捲動模式：自己接手滑鼠滾輪捲動，改成平滑趨近目標位置，
    避免原生滾輪一格一格跳（尤其滑鼠滾輪，不像觸控板有慣性）造成畫面抖動。
-   累加每次滾動的位移到一個目標值，再用 rAF 緩動趨近，讓捲動速度連續、不頓；
-   同時把單次滾輪事件的位移量夾在一個上限內，避免某些滑鼠滾輪一次回報一大段
-   造成瞬間跳動、看起來像抖動。 */
-let scrollWheelTarget = null;
+   累加每次滾動帶來的速度，用 rAF 搭配摩擦力衰減，讓捲動連續、不頓；
+   改用「速度」而非「固定目標」：原本的做法在滾輪滾得快、頻繁時很順，
+   但講者速度變慢、滾輪動作變小變稀疏時，畫面會在兩次滾動之間就完全收斂到目標、停下來，
+   造成一頓一頓的卡頓感，影響講者節奏。速度模型不會瞬間歸零，滾得稀疏一樣能連續滑順；
+   而且每一幀都是疊加在「目前實際位置」上，不是拉向一個絕對目標，
+   跟拖曳右側捲軸這類其他捲動方式衝突也會小很多。 */
+let scrollVelocity = 0;
 let scrollWheelRAF = null;
-const SCROLL_WHEEL_MAX_STEP = 140; // 單次滾輪事件最多累加多少 px，避免忽大忽小的跳動
+const SCROLL_WHEEL_MAX_STEP = 140; // 單次滾輪事件最多貢獻多少 px 的速度，避免忽大忽小的跳動
+const SCROLL_FRICTION = 0.93; // 每幀衰減比例，越接近 1 滑得越久、越不容易在滾動稀疏時中斷
+const SCROLL_MAX_VELOCITY = 70; // 速度上限，避免滾太快飛出去
+let scrollWheelLastSet = null;
 function scrollWheelTick(){
-  if(scrollWheelTarget == null){ scrollWheelRAF = null; return; }
-  const current = stageMainEl.scrollTop;
-  const diff = scrollWheelTarget - current;
-  if(Math.abs(diff) < 0.5){
-    stageMainEl.scrollTop = scrollWheelTarget;
-    scrollWheelTarget = null;
+  if(Math.abs(scrollVelocity) < 0.05){
+    scrollVelocity = 0;
     scrollWheelRAF = null;
-    syncPresent('tick');
+    scrollWheelLastSet = null;
     return;
   }
-  stageMainEl.scrollTop = current + diff * 0.22; // 緩動係數，數字越小越滑順但反應稍慢
+  const actualCurrent = stageMainEl.scrollTop;
+  if(scrollWheelLastSet != null && Math.abs(actualCurrent - scrollWheelLastSet) > 3){
+    // 目前位置跟我們上一幀設定的不一樣，代表中途被其他方式改動過（例如使用者直接拖曳右側捲軸），
+    // 直接清空剩餘動能、尊重使用者的操作，不要再往原本的方向繼續疊加飄動
+    scrollVelocity = 0;
+    scrollWheelRAF = null;
+    scrollWheelLastSet = null;
+    return;
+  }
+  const maxScroll = Math.max(0, stageMainEl.scrollHeight - stageMainEl.clientHeight);
+  const next = Math.min(maxScroll, Math.max(0, actualCurrent + scrollVelocity));
+  stageMainEl.scrollTop = next;
+  scrollWheelLastSet = next;
+  if(next <= 0 || next >= maxScroll) scrollVelocity = 0; // 撞到頭尾就停止，不要一直空轉
+  else scrollVelocity *= SCROLL_FRICTION;
   syncPresent('tick');
   scrollWheelRAF = requestAnimationFrame(scrollWheelTick);
 }
@@ -1702,10 +1814,8 @@ stageEl.addEventListener('wheel', (e)=>{
   if(!scrollMode) return;
   if(stageEl.style.display !== 'flex') return;
   e.preventDefault();
-  const maxScroll = Math.max(0, stageMainEl.scrollHeight - stageMainEl.clientHeight);
-  const base = scrollWheelTarget != null ? scrollWheelTarget : stageMainEl.scrollTop;
   const clampedDelta = Math.max(-SCROLL_WHEEL_MAX_STEP, Math.min(SCROLL_WHEEL_MAX_STEP, e.deltaY));
-  scrollWheelTarget = Math.min(maxScroll, Math.max(0, base + clampedDelta));
+  scrollVelocity = Math.max(-SCROLL_MAX_VELOCITY, Math.min(SCROLL_MAX_VELOCITY, scrollVelocity + clampedDelta * 0.5));
   if(!scrollWheelRAF) scrollWheelRAF = requestAnimationFrame(scrollWheelTick);
 }, { passive:false });
 
@@ -1982,7 +2092,7 @@ function getSectionScrollTop(sec){
 // 否則殘留的滾輪緩動會在後續畫面更新時把位置拉回去，變成抖動、看起來像功能壞掉
 function cancelWheelEasing(){
   if(scrollWheelRAF){ cancelAnimationFrame(scrollWheelRAF); scrollWheelRAF = null; }
-  scrollWheelTarget = null;
+  scrollVelocity = 0;
 }
 
 function jumpSection(direction){
@@ -2073,7 +2183,11 @@ function handleStageKey(key, preventDefault){
       case 'ArrowDown':
         if(preventDefault) preventDefault();
         cancelWheelEasing();
-        stageMainEl.scrollBy({ top: stageMainEl.clientHeight * 0.55, behavior:'smooth' });
+        // 不用 behavior:'smooth'：原生的平滑捲動動畫是瀏覽器自己控制的，
+        // 我們的 JS 沒辦法半途取消它。如果動畫還沒播完，使用者就去拖曳右側捲軸，
+        // 這個還在跑的原生動畫會持續想跑到它自己的目標，跟手動拖曳打架，
+        // 造成「抖動、拖了但沒有真的移動」的狀況。改成即時跳轉就不會有這個殘留動畫。
+        stageMainEl.scrollBy({ top: stageMainEl.clientHeight * 0.55 });
         syncPresent('tick');
         break;
       case 'PageUp':
@@ -2081,7 +2195,7 @@ function handleStageKey(key, preventDefault){
       case 'ArrowUp':
         if(preventDefault) preventDefault();
         cancelWheelEasing();
-        stageMainEl.scrollBy({ top: -stageMainEl.clientHeight * 0.55, behavior:'smooth' });
+        stageMainEl.scrollBy({ top: -stageMainEl.clientHeight * 0.55 });
         syncPresent('tick');
         break;
       case '+':
@@ -2158,8 +2272,28 @@ document.addEventListener('keydown', (e)=>{
     }
     return;
   }
+  if(document.getElementById('standaloneTimer').classList.contains('show')){
+    if(e.key === 'Escape') closeStandaloneTimer();
+    return; // 獨立計時器畫面自己處理鍵盤，不要再讓 handleStageKey 去處理投放相關的鍵
+  }
   handleStageKey(e.key, ()=> e.preventDefault());
 });
+
+/* ---------------- 獨立計時器（全螢幕、可打節目名稱與提示詞） ---------------- */
+function openStandaloneTimer(){
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('standaloneTimer').classList.add('show');
+  updateDigits(); // 立刻同步一次目前計時器狀態的顯示
+  standaloneTallyDot.classList.toggle('running', running);
+  standalonePlayBtn.textContent = running ? '❚❚' : '▶';
+}
+function closeStandaloneTimer(){
+  document.getElementById('standaloneTimer').classList.remove('show');
+  document.getElementById('setup').style.display = 'flex';
+}
+document.getElementById('openStandaloneTimerBtn').addEventListener('click', openStandaloneTimer);
+document.getElementById('standaloneBackBtn').addEventListener('click', closeStandaloneTimer);
+document.getElementById('standaloneFsBtn').addEventListener('click', toggleFullscreen);
 
 /* ---------------- 計時器：倒數 / 正數 可切換 ---------------- */
 let mode = 'stopwatch'; // 'countdown' | 'stopwatch'  ← 預設正數
@@ -2171,11 +2305,20 @@ let lastTick = null;
 
 const timerDigits = document.getElementById('timerDigits');
 const tallyDot = document.getElementById('tallyDot');
+const standaloneTallyDot = document.getElementById('standaloneTallyDot');
 const playBtn = document.getElementById('playBtn');
 const modeBtn = document.getElementById('modeBtn');
 const minInput = document.getElementById('minInput');
 const countdownSetup = document.getElementById('countdownSetup');
 const resetBtn = document.getElementById('resetBtn');
+// 獨立計時器畫面用的是同一組計時器狀態（mode/running/elapsedMs...），只是多一份顯示、
+// 兩邊按鈕都指向同一套 start/pause/reset/mode 邏輯，這樣不管在哪個畫面操作，時間都是連續一致的
+const standaloneTimerDigits = document.getElementById('standaloneTimerDigits');
+const standalonePlayBtn = document.getElementById('standalonePlayBtn');
+const standaloneModeBtn = document.getElementById('standaloneModeBtn');
+const standaloneMinInput = document.getElementById('standaloneMinInput');
+const standaloneCountdownSetup = document.getElementById('standaloneCountdownSetup');
+const standaloneResetBtn = document.getElementById('standaloneResetBtn');
 
 function fmt(ms){
   const sign = ms < 0 ? '-' : '';
@@ -2189,15 +2332,21 @@ function fmt(ms){
 function updateDigits(){
   let display;
   timerDigits.classList.remove('warn','over');
+  standaloneTimerDigits.classList.remove('warn','over');
   if(mode === 'countdown'){
     const remain = countdownTotalMs - elapsedMs;
     display = fmt(remain);
-    if(remain <= 0){ timerDigits.classList.add('over'); tallyDot.classList.toggle('warn', false); }
-    else if(remain <= 30000){ timerDigits.classList.add('warn'); }
+    if(remain <= 0){
+      timerDigits.classList.add('over'); standaloneTimerDigits.classList.add('over');
+      tallyDot.classList.toggle('warn', false); standaloneTallyDot.classList.toggle('warn', false);
+    } else if(remain <= 30000){
+      timerDigits.classList.add('warn'); standaloneTimerDigits.classList.add('warn');
+    }
   } else {
     display = fmt(elapsedMs);
   }
   timerDigits.textContent = display;
+  standaloneTimerDigits.textContent = display;
   syncPresent('tick');
 }
 
@@ -2214,13 +2363,17 @@ function startTimer(){
   running = true;
   lastTick = null;
   tallyDot.classList.add('running');
+  standaloneTallyDot.classList.add('running');
   playBtn.textContent = '❚❚';
+  standalonePlayBtn.textContent = '❚❚';
   tickHandle = requestAnimationFrame(tick);
 }
 function pauseTimer(){
   running = false;
   tallyDot.classList.remove('running');
+  standaloneTallyDot.classList.remove('running');
   playBtn.textContent = '▶';
+  standalonePlayBtn.textContent = '▶';
   if(tickHandle) cancelAnimationFrame(tickHandle);
 }
 function resetTimer(){
@@ -2233,19 +2386,30 @@ playBtn.addEventListener('click', ()=>{
   running ? pauseTimer() : startTimer();
 });
 resetBtn.addEventListener('click', resetTimer);
+standalonePlayBtn.addEventListener('click', ()=>{
+  running ? pauseTimer() : startTimer();
+});
+standaloneResetBtn.addEventListener('click', resetTimer);
 
-modeBtn.addEventListener('click', ()=>{
+function toggleTimerMode(){
   mode = (mode === 'countdown') ? 'stopwatch' : 'countdown';
   modeBtn.classList.toggle('on', mode === 'countdown');
+  standaloneModeBtn.classList.toggle('on', mode === 'countdown');
   countdownSetup.style.display = (mode === 'countdown') ? 'flex' : 'none';
+  standaloneCountdownSetup.style.display = (mode === 'countdown') ? 'flex' : 'none';
   resetTimer();
-});
-minInput.addEventListener('change', ()=>{
-  const mins = Math.max(0, Math.min(180, Number(minInput.value) || 0));
+}
+function setCountdownMinutes(mins){
+  mins = Math.max(0, Math.min(180, Number(mins) || 0));
   minInput.value = mins;
+  standaloneMinInput.value = mins;
   countdownTotalMs = mins * 60 * 1000;
   if(!running) updateDigits();
-});
+}
+modeBtn.addEventListener('click', toggleTimerMode);
+standaloneModeBtn.addEventListener('click', toggleTimerMode);
+minInput.addEventListener('change', ()=> setCountdownMinutes(minInput.value));
+standaloneMinInput.addEventListener('change', ()=> setCountdownMinutes(standaloneMinInput.value));
 
 updateDigits();
 
