@@ -813,7 +813,7 @@
       <button class="timer-btn standalone-play-btn" id="standalonePlayBtn" type="button" title="開始／暫停">▶</button>
       <button class="timer-btn" id="standaloneResetBtn" type="button" title="重設">↺</button>
     </div>
-    <input type="text" id="standalonePromptText" class="standalone-prompt-text" placeholder="輸入提示詞，提醒主持人的文字…" maxlength="80" autocomplete="off">
+    <input type="text" id="standalonePromptText" class="standalone-prompt-text" maxlength="80" autocomplete="off">
   </div>
 </div>
 
@@ -2273,7 +2273,13 @@ document.addEventListener('keydown', (e)=>{
     return;
   }
   if(document.getElementById('standaloneTimer').classList.contains('show')){
-    if(e.key === 'Escape') closeStandaloneTimer();
+    if(e.key === 'Escape'){ closeStandaloneTimer(); return; }
+    if(e.key === ' ' && document.activeElement.tagName !== 'INPUT'){
+      // 空白鍵快速開始/暫停，但打字中（游標在節目名稱／提示詞欄位）不要誤觸
+      e.preventDefault();
+      running ? pauseTimer() : startTimer();
+      return;
+    }
     return; // 獨立計時器畫面自己處理鍵盤，不要再讓 handleStageKey 去處理投放相關的鍵
   }
   handleStageKey(e.key, ()=> e.preventDefault());
@@ -2294,6 +2300,12 @@ function closeStandaloneTimer(){
 document.getElementById('openStandaloneTimerBtn').addEventListener('click', openStandaloneTimer);
 document.getElementById('standaloneBackBtn').addEventListener('click', closeStandaloneTimer);
 document.getElementById('standaloneFsBtn').addEventListener('click', toggleFullscreen);
+document.getElementById('standaloneTimer').addEventListener('click', (e)=>{
+  // 為了快速開始：點擊畫面空白區域就能開始/暫停計時，不用特地去點小小的播放按鈕；
+  // 但點到按鈕、輸入框本身時不要被這個順便觸發，維持它們各自原本的動作
+  if(e.target.closest('button, input')) return;
+  running ? pauseTimer() : startTimer();
+});
 
 /* ---------------- 計時器：倒數 / 正數 可切換 ---------------- */
 let mode = 'stopwatch'; // 'countdown' | 'stopwatch'  ← 預設正數
