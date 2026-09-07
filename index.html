@@ -2274,10 +2274,17 @@ document.addEventListener('keydown', (e)=>{
   }
   if(document.getElementById('standaloneTimer').classList.contains('show')){
     if(e.key === 'Escape'){ closeStandaloneTimer(); return; }
-    if(e.key === ' ' && document.activeElement.tagName !== 'INPUT'){
-      // 空白鍵快速開始/暫停，但打字中（游標在節目名稱／提示詞欄位）不要誤觸
+    if(document.activeElement.tagName === 'INPUT') return; // 打字中（節目名稱／提示詞）不要被下面的快捷鍵誤觸
+    if(e.key === ' ' || e.key === 'PageDown' || e.key === 'ArrowRight'){
+      // 空白鍵，或簡報筆的「下一頁」：開始／暫停，方便直接拿簡報筆遙控計時器
       e.preventDefault();
       running ? pauseTimer() : startTimer();
+      return;
+    }
+    if(e.key === 'PageUp' || e.key === 'ArrowLeft'){
+      // 簡報筆的「上一頁」：歸零
+      e.preventDefault();
+      resetTimer();
       return;
     }
     return; // 獨立計時器畫面自己處理鍵盤，不要再讓 handleStageKey 去處理投放相關的鍵
