@@ -1780,29 +1780,45 @@ stageEl.addEventListener('wheel', (e)=>{
 let scrollVelocity = 0;
 let scrollWheelRAF = null;
 const SCROLL_WHEEL_MAX_STEP = 140; // 單次滾輪事件最多貢獻多少 px 的速度，避免忽大忽小的跳動
-const SCROLL_FRICTION = 0.93; // 每幀衰減比例，越接近 1 滑得越久、越不容易在滾動稀疏時中斷
-const SCROLL_MAX_VELOCITY = 70; // 速度上限，避免滾太快飛出去
-let scrollWheelLastSet = null;
+const SCROLL_FRICTION = 0.95; // 每幀衰減比例，越接近 1 尾段拖得越久、越不容易在滾動稀疏時中斷
+const SCROLL_MAX_VELOCITY = 20; // 速度上限，避免連續快速滾動時飛太遠
+let scrollWheelCarry = 0; // 次像素餘數，避免速度小時的零頭被整數化吃掉
+let scrollWheelLastActual = null; // 用來偵測「這一幀是否有遠超合理範圍的外部跳動」（例如拖曳捲軸）
 function scrollWheelTick(){
   if(Math.abs(scrollVelocity) < 0.05){
     scrollVelocity = 0;
     scrollWheelRAF = null;
-    scrollWheelLastSet = null;
+    scrollWheelCarry = 0;
+    scrollWheelLastActual = null;
     return;
   }
-  const actualCurrent = stageMainEl.scrollTop;
-  if(scrollWheelLastSet != null && Math.abs(actualCurrent - scrollWheelLastSet) > 3){
-    // 目前位置跟我們上一幀設定的不一樣，代表中途被其他方式改動過（例如使用者直接拖曳右側捲軸），
-    // 直接清空剩餘動能、尊重使用者的操作，不要再往原本的方向繼續疊加飄動
-    scrollVelocity = 0;
-    scrollWheelRAF = null;
-    scrollWheelLastSet = null;
-    return;
+  const current = stageMainEl.scrollTop;
+  if(scrollWheelLastActual != null){
+    // 這一幀「實際」移動了多少：可能同時包含我們自己上一幀寫入的量、以及自動捲動同一時間疊加的量，
+    // 兩者合理範圍都不大；只有遠遠超過這個範圍（例如使用者直接拖曳捲軸跳到很遠的地方）才視為外部介入
+    const observedDelta = Math.abs(current - scrollWheelLastActual);
+    const reasonableMax = Math.abs(scrollVelocity) + 10 + (autoScrollOn ? 15 : 0);
+    if(observedDelta > reasonableMax){
+      scrollVelocity = 0;
+      scrollWheelRAF = null;
+      scrollWheelCarry = 0;
+      scrollWheelLastActual = null;
+      return;
+    }
   }
   const maxScroll = Math.max(0, stageMainEl.scrollHeight - stageMainEl.clientHeight);
-  const next = Math.min(maxScroll, Math.max(0, actualCurrent + scrollVelocity));
-  stageMainEl.scrollTop = next;
-  scrollWheelLastSet = next;
+  const deltaPx = scrollVelocity + scrollWheelCarry;
+  const wholePx = Math.trunc(deltaPx);
+  scrollWheelCarry = deltaPx - wholePx;
+  let next = current;
+  if(wholePx !== 0){
+    // 以「目前實際位置」為基準疊加，不是覆寫成我們自己算的絕對值——
+    // 這樣自動捲動同一時間疊加的量不會被我們蓋掉，兩邊可以同時運作、互不打架
+    next = Math.min(maxScroll, Math.max(0, current + wholePx));
+    stageMainEl.scrollTop = next;
+    syncPresent('tick');
+  }
+  scrollWheelLastActual = next;
   if(next <= 0 || next >= maxScroll) scrollVelocity = 0; // 撞到頭尾就停止，不要一直空轉
   else scrollVelocity *= SCROLL_FRICTION;
   syncPresent('tick');
@@ -1815,7 +1831,7 @@ stageEl.addEventListener('wheel', (e)=>{
   if(stageEl.style.display !== 'flex') return;
   e.preventDefault();
   const clampedDelta = Math.max(-SCROLL_WHEEL_MAX_STEP, Math.min(SCROLL_WHEEL_MAX_STEP, e.deltaY));
-  scrollVelocity = Math.max(-SCROLL_MAX_VELOCITY, Math.min(SCROLL_MAX_VELOCITY, scrollVelocity + clampedDelta * 0.5));
+  scrollVelocity = Math.max(-SCROLL_MAX_VELOCITY, Math.min(SCROLL_MAX_VELOCITY, scrollVelocity + clampedDelta * 0.025));
   if(!scrollWheelRAF) scrollWheelRAF = requestAnimationFrame(scrollWheelTick);
 }, { passive:false });
 
@@ -2093,6 +2109,7 @@ function getSectionScrollTop(sec){
 function cancelWheelEasing(){
   if(scrollWheelRAF){ cancelAnimationFrame(scrollWheelRAF); scrollWheelRAF = null; }
   scrollVelocity = 0;
+  scrollWheelPos = null;
 }
 
 function jumpSection(direction){
