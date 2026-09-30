@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>主持人提詞台 / Host Prompter</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.2/jszip.min.js"></script>
 <style>
   :root{
     --bg: #0B0D10;
@@ -347,7 +348,7 @@
   }
   #cardText{
     font-size:calc(var(--auto-font, 60px) * var(--text-scale, 1));
-    font-weight:700; line-height:1.7; letter-spacing:-.01em;
+    font-weight:700; line-height:var(--card-line-height, 1.7); letter-spacing:-.01em;
     max-width:1650px; width:100%; text-align:left; overflow-wrap:break-word;
   }
   #cardText .para{ margin-top:0.8em; }
@@ -520,6 +521,12 @@
     background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:4px;
   }
   #stage.scroll-mode .autoscroll-controls{ display:flex; }
+  .line-height-controls{
+    display:none; align-items:center; gap:2px;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:4px;
+  }
+  #stage.scroll-mode .line-height-controls{ display:flex; }
+  #lineHeightLabel{ min-width:34px; }
   #autoScrollToggleBtn{
     border:1.5px solid var(--teal); color:var(--teal);
   }
@@ -753,6 +760,11 @@
         <div class="scale-label mono" id="speedLabel">1.0x</div>
         <button class="mini-btn" id="speedUpBtn" title="捲動變快">+</button>
       </div>
+      <div class="line-height-controls" id="lineHeightControls">
+        <button class="mini-btn" id="lineHeightDownBtn" title="行距變窄">-</button>
+        <div class="scale-label mono" id="lineHeightLabel">行距 1.7</div>
+        <button class="mini-btn" id="lineHeightUpBtn" title="行距變寬">+</button>
+      </div>
       <div class="scale-controls">
         <button class="mini-btn" id="scaleDownBtn" title="縮小文字">A-</button>
         <div class="scale-label mono" id="scaleLabel">100%</div>
@@ -894,11 +906,22 @@ function splitToCards(raw){
 
 /* 解析 docx 轉出的 HTML，保留 <ol> 自動編號（1. 2. 3.）與 <ul> 項目符號，
    一般段落之間仍以空白段落作為分卡依據 */
-function docxHtmlToCards(html){
+function docxHtmlToCards(html, colorQueue){
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const cardsOut = [];
   let pending = [];
   let orderedCounter = 1; // 持續遞增，不因為切成好幾個 <ol> 就重設
+  let colorIdx = 0;
+
+  function nextColor(){
+    if(!colorQueue) return null;
+    return colorQueue[colorIdx++] || null;
+  }
+  function wrapColor(text, color){
+    // 用標記語法把顏色包進純文字裡（文字框只能存純文字，沒辦法存顏色），
+    // 投放時會辨識這個標記渲染成彩色文字，見 paragraphsHtml
+    return color ? ('[[c#' + color + ']]' + text + '[[/c]]') : text;
+  }
 
   function flushPending(){
     if(pending.length){
@@ -927,8 +950,9 @@ function docxHtmlToCards(html){
       if(li.tagName !== 'LI') return;
       flushPending();
       const text = liOwnText(li);
+      const color = nextColor();
       const prefix = ordered ? (orderedCounter + '. ') : '• ';
-      if(text) cardsOut.push(prefix + text);
+      if(text) cardsOut.push(wrapColor(prefix + text, color));
       if(ordered) orderedCounter++;
       Array.from(li.children).forEach(child=>{
         if(child.tagName === 'OL') walkList(child, true);
@@ -942,7 +966,8 @@ function docxHtmlToCards(html){
     else if(el.tagName === 'UL'){ flushPending(); walkList(el, false); }
     else if(el.tagName === 'P'){
       const t = el.textContent.trim();
-      if(t === ''){ flushPending(); } else { pending.push(t); }
+      const color = nextColor();
+      if(t === ''){ flushPending(); } else { pending.push(wrapColor(t, color)); }
     } else {
       const t = el.textContent.trim();
       if(t) pending.push(t);
@@ -974,7 +999,7 @@ function renderBackdrop(){
     if(line.trim() === '!COUNTDOWN!'){
       return '<div class="countdown-render"><span class="countdown-render-line"><span>倒數</span></span></div>';
     }
-    return '<div>' + (escapeHtml(line) || '&nbsp;') + '</div>';
+    return '<div>' + (renderColoredText(line) || '&nbsp;') + '</div>';
   }).join('');
   pasteBackdrop.innerHTML = html;
   // 重建內容會讓背景層的捲動位置重設，這裡強制跟 textarea 重新對齊
@@ -1145,6 +1170,40 @@ fileInput.addEventListener('change', e=>{
   if(e.target.files.length) handleDocx(e.target.files[0]);
 });
 
+// 直接解析 docx 內部的原始 XML（docx 本質上是一個 zip 檔）抓出每一段文字的顏色——
+// mammoth 專注在語意結構，不會把顏色這種純視覺樣式帶到轉換出來的 HTML 裡，
+// 所以顏色要另外自己從 word/document.xml 抓，抓到之後依照段落順序跟 mammoth 解析出來的內容對應起來
+async function extractParagraphColors(arrayBuffer){
+  try{
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const xmlFile = zip.file('word/document.xml');
+    if(!xmlFile) return [];
+    const xmlText = await xmlFile.async('string');
+    const xmlDoc = new DOMParser().parseFromString(xmlText, 'text/xml');
+    const paragraphs = xmlDoc.getElementsByTagName('w:p');
+    const colors = [];
+    for(let i = 0; i < paragraphs.length; i++){
+      const runs = paragraphs[i].getElementsByTagName('w:r');
+      let color = null;
+      for(let j = 0; j < runs.length; j++){
+        const colorEls = runs[j].getElementsByTagName('w:color');
+        if(colorEls.length > 0){
+          const val = colorEls[0].getAttribute('w:val');
+          // "auto"（跟隨預設）或黑色，都當作沒有特別上色，不需要標記
+          if(val && val.toLowerCase() !== 'auto' && val.toLowerCase() !== '000000'){
+            color = val.toUpperCase();
+            break;
+          }
+        }
+      }
+      colors.push(color);
+    }
+    return colors;
+  }catch(e){
+    return []; // 抓不到顏色就算了，不影響主要的文字匯入
+  }
+}
+
 function handleDocx(file){
   if(!file.name.toLowerCase().endsWith('.docx')){
     fileStatus.style.color = 'var(--tally-red)';
@@ -1155,9 +1214,13 @@ function handleDocx(file){
   fileStatus.textContent = '解析中…';
   const reader = new FileReader();
   reader.onload = function(e){
-    mammoth.convertToHtml({arrayBuffer: e.target.result})
-      .then(function(result){
-        const parsedCards = docxHtmlToCards(result.value);
+    const buffer = e.target.result;
+    Promise.all([
+      mammoth.convertToHtml({arrayBuffer: buffer}),
+      extractParagraphColors(buffer.slice(0)) // 複製一份，避免跟 mammoth 共用同一個 buffer
+    ])
+      .then(function([result, colors]){
+        const parsedCards = docxHtmlToCards(result.value, colors);
         pasteArea.value = parsedCards.join('\n\n');
         cards = splitToCards(pasteArea.value);
         fileStatus.style.color = 'var(--teal)';
@@ -1637,6 +1700,7 @@ function syncPresent(kind){
       cardIndex: cardIndex,
       scrollMode: scrollMode,
       scale: textScale,
+      lineHeight: cardLineHeight,
       flipH: document.getElementById('flipHToggle').checked,
       flipV: document.getElementById('flipVToggle').checked,
       padding: stageMainEl.style.padding,
@@ -1667,6 +1731,7 @@ if(!isPresentReceiver){
       cardIndex = msg.cardIndex;
       scrollMode = msg.scrollMode;
       textScale = msg.scale;
+      if(msg.lineHeight != null) cardLineHeight = msg.lineHeight;
       stageMainEl.style.padding = msg.padding;
       document.getElementById('timerWidget').classList.toggle('timer-top', msg.timerTop);
       document.getElementById('timerWidget').classList.toggle('timer-hidden', msg.timerHidden);
@@ -1680,7 +1745,7 @@ if(!isPresentReceiver){
         renderCard();
       }
       applyScale();
-    } else if(msg.type === 'tick'){
+      applyLineHeight();
       if(msg.timerText != null){
         timerDigits.textContent = msg.timerText;
         timerDigits.className = msg.timerClass;
@@ -1740,6 +1805,19 @@ function bindHold(btn, fn){
 }
 bindHold(document.getElementById('scaleUpBtn'), scaleUp);
 bindHold(document.getElementById('scaleDownBtn'), scaleDown);
+
+/* ---------------- 捲動模式：自訂行距 ---------------- */
+let cardLineHeight = 1.7;
+const lineHeightLabel = document.getElementById('lineHeightLabel');
+function applyLineHeight(){
+  cardTextEl.style.setProperty('--card-line-height', cardLineHeight);
+  lineHeightLabel.textContent = '行距 ' + cardLineHeight.toFixed(1);
+  syncPresent('full');
+}
+function lineHeightUp(){ cardLineHeight = Math.min(2.6, +(cardLineHeight + 0.1).toFixed(1)); applyLineHeight(); }
+function lineHeightDown(){ cardLineHeight = Math.max(1.0, +(cardLineHeight - 0.1).toFixed(1)); applyLineHeight(); }
+bindHold(document.getElementById('lineHeightUpBtn'), lineHeightUp);
+bindHold(document.getElementById('lineHeightDownBtn'), lineHeightDown);
 
 /* ---------------- 自動計算最適合的字級（避免溢出或留白過多） ---------------- */
 const stageMainEl = document.querySelector('.stage-main');
@@ -1974,6 +2052,22 @@ function buildDots(){
 // （使用者根本沒有用「---」分頁），這時候光靠「第幾頁」完全不夠精準定位游標，
 // 需要精確到「第幾段」，所以這裡把每一段的原始文字依畫面出現順序記下來，
 // 並且在對應的 DOM 元素上標記 data-pidx，兩邊用同一份索引對起來。
+// 把 [[c#HEXCODE]]...[[/c]] 標記轉成彩色文字（畫面上完全看不到標記本身），
+// 對應 Word 匯入時用同一套標記把顏色資訊藏進純文字裡（見 docxHtmlToCards）
+function renderColoredText(text){
+  const regex = /\[\[c#([0-9A-Fa-f]{6})\]\]([\s\S]*?)\[\[\/c\]\]/g;
+  let result = '';
+  let lastIndex = 0;
+  let m;
+  while((m = regex.exec(text)) !== null){
+    result += escapeHtml(text.slice(lastIndex, m.index)).replace(/\n/g, '<br>');
+    result += '<span style="color:#' + m[1] + '">' + escapeHtml(m[2]).replace(/\n/g, '<br>') + '</span>';
+    lastIndex = m.index + m[0].length;
+  }
+  result += escapeHtml(text.slice(lastIndex)).replace(/\n/g, '<br>');
+  return result;
+}
+
 function paragraphsHtml(raw, registry){
   const paragraphs = raw.split(/\n{2,}/).map(p => p.trim()).filter(p => p.length > 0);
   return paragraphs.map(p => {
@@ -1986,7 +2080,7 @@ function paragraphsHtml(raw, registry){
         '<span class="cs-dot"></span>' +
       '</div>';
     }
-    return '<div class="para"' + pidxAttr + '>' + escapeHtml(p).replace(/\n/g, '<br>') + '</div>';
+    return '<div class="para"' + pidxAttr + '>' + renderColoredText(p) + '</div>';
   }).join('');
 }
 
