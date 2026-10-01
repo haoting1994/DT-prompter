@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>主持人提詞台 / Host Prompter</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.2/jszip.min.js"></script>
 <style>
   :root{
     --bg: #0B0D10;
@@ -83,15 +82,25 @@
   }
   .eyebrow-big::before{
     content:''; width:7px; height:7px; border-radius:50%;
-    background:var(--amber); display:inline-block; flex-shrink:0;
-    box-shadow:0 0 8px rgba(255,176,32,.6);
+    background:#7DD3FC; display:inline-block; flex-shrink:0;
+    box-shadow:0 0 8px rgba(125,211,252,.6);
   }
+  .eyebrow-big.no-dot::before{ content:none; }
+  .tofu-icon{ flex-shrink:0; filter:drop-shadow(0 0 4px rgba(125,211,252,.35)); }
   .brand-logo{
     height:32px; width:auto; display:block;
   }
   .brand-text{
     font-size:14px; font-weight:800; letter-spacing:.03em; color:var(--text);
     position:relative; top:-1.75px; /* 視覺校正：實測收斂後的最佳值 */
+  }
+  .tofu-brand-text{
+    color:#38BDF8; font-size:16px; top:0; letter-spacing:.04em; word-spacing:-.25em;
+    font-family:'JetBrains Mono','SFMono-Regular',Consolas,monospace; font-weight:800;
+  }
+  .prompter-text{
+    color:var(--text); font-size:13px; top:0; letter-spacing:.1em;
+    font-family:'Inter',-apple-system,'PingFang TC','Noto Sans TC',sans-serif; font-weight:600;
   }
   .eyebrow-sub{
     font-size:12px; font-weight:500; color:var(--text-dim);
@@ -684,7 +693,14 @@
 <div id="setup">
   <div class="setup-card">
     <div class="header-row">
-    <div class="eyebrow-big"><img src="data:image/png;base64,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AAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA0I+gAAAAAA0ICgD8AEcDgBAAAAJUlEQVQAAAAA0ICgDwAAAAAADQj6AAAAAADQgKAPAAAAAAANCPoAAAAAANCAoA8AAAAAAA38Lx47FT+WXF3XAAAAAElFTkSuQmCC" class="brand-logo" alt="logo"><span class="brand-text">PROMPTER</span></div>
+    <div class="eyebrow-big no-dot">
+      <svg class="tofu-icon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+        <path d="M2 5.2 L8 2 L14 5.2 L8 8.4 Z" fill="#FFFDF5"/>
+        <path d="M2 5.2 L8 8.4 L8 14.6 L2 11.4 Z" fill="#EFE4C4"/>
+        <path d="M14 5.2 L8 8.4 L8 14.6 L14 11.4 Z" fill="#DCCC9E"/>
+      </svg>
+      <span class="brand-text tofu-brand-text">TOFU LAB</span><span class="brand-text prompter-text"> PROMPTER</span>
+    </div>
     <button id="openStandaloneTimerBtn" class="timer-entry-btn" type="button">🕐 獨立計時器</button>
     </div>
 
@@ -906,22 +922,11 @@ function splitToCards(raw){
 
 /* 解析 docx 轉出的 HTML，保留 <ol> 自動編號（1. 2. 3.）與 <ul> 項目符號，
    一般段落之間仍以空白段落作為分卡依據 */
-function docxHtmlToCards(html, colorQueue){
+function docxHtmlToCards(html){
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const cardsOut = [];
   let pending = [];
   let orderedCounter = 1; // 持續遞增，不因為切成好幾個 <ol> 就重設
-  let colorIdx = 0;
-
-  function nextColor(){
-    if(!colorQueue) return null;
-    return colorQueue[colorIdx++] || null;
-  }
-  function wrapColor(text, color){
-    // 用標記語法把顏色包進純文字裡（文字框只能存純文字，沒辦法存顏色），
-    // 投放時會辨識這個標記渲染成彩色文字，見 paragraphsHtml
-    return color ? ('[[c#' + color + ']]' + text + '[[/c]]') : text;
-  }
 
   function flushPending(){
     if(pending.length){
@@ -950,9 +955,8 @@ function docxHtmlToCards(html, colorQueue){
       if(li.tagName !== 'LI') return;
       flushPending();
       const text = liOwnText(li);
-      const color = nextColor();
       const prefix = ordered ? (orderedCounter + '. ') : '• ';
-      if(text) cardsOut.push(wrapColor(prefix + text, color));
+      if(text) cardsOut.push(prefix + text);
       if(ordered) orderedCounter++;
       Array.from(li.children).forEach(child=>{
         if(child.tagName === 'OL') walkList(child, true);
@@ -966,8 +970,7 @@ function docxHtmlToCards(html, colorQueue){
     else if(el.tagName === 'UL'){ flushPending(); walkList(el, false); }
     else if(el.tagName === 'P'){
       const t = el.textContent.trim();
-      const color = nextColor();
-      if(t === ''){ flushPending(); } else { pending.push(wrapColor(t, color)); }
+      if(t === ''){ flushPending(); } else { pending.push(t); }
     } else {
       const t = el.textContent.trim();
       if(t) pending.push(t);
@@ -999,7 +1002,7 @@ function renderBackdrop(){
     if(line.trim() === '!COUNTDOWN!'){
       return '<div class="countdown-render"><span class="countdown-render-line"><span>倒數</span></span></div>';
     }
-    return '<div>' + (renderColoredText(line) || '&nbsp;') + '</div>';
+    return '<div>' + (escapeHtml(line) || '&nbsp;') + '</div>';
   }).join('');
   pasteBackdrop.innerHTML = html;
   // 重建內容會讓背景層的捲動位置重設，這裡強制跟 textarea 重新對齊
@@ -1123,7 +1126,6 @@ insertCountdownBtn.addEventListener('click', ()=>{
   renderBackdrop();
 });
 
-/* ---------------- 搜尋：在逐字稿裡找文字，方便直接跳到那一段 ---------------- */
 const findInput = document.getElementById('findInput');
 const findNextBtn = document.getElementById('findNextBtn');
 const findStatus = document.getElementById('findStatus');
@@ -1170,40 +1172,6 @@ fileInput.addEventListener('change', e=>{
   if(e.target.files.length) handleDocx(e.target.files[0]);
 });
 
-// 直接解析 docx 內部的原始 XML（docx 本質上是一個 zip 檔）抓出每一段文字的顏色——
-// mammoth 專注在語意結構，不會把顏色這種純視覺樣式帶到轉換出來的 HTML 裡，
-// 所以顏色要另外自己從 word/document.xml 抓，抓到之後依照段落順序跟 mammoth 解析出來的內容對應起來
-async function extractParagraphColors(arrayBuffer){
-  try{
-    const zip = await JSZip.loadAsync(arrayBuffer);
-    const xmlFile = zip.file('word/document.xml');
-    if(!xmlFile) return [];
-    const xmlText = await xmlFile.async('string');
-    const xmlDoc = new DOMParser().parseFromString(xmlText, 'text/xml');
-    const paragraphs = xmlDoc.getElementsByTagName('w:p');
-    const colors = [];
-    for(let i = 0; i < paragraphs.length; i++){
-      const runs = paragraphs[i].getElementsByTagName('w:r');
-      let color = null;
-      for(let j = 0; j < runs.length; j++){
-        const colorEls = runs[j].getElementsByTagName('w:color');
-        if(colorEls.length > 0){
-          const val = colorEls[0].getAttribute('w:val');
-          // "auto"（跟隨預設）或黑色，都當作沒有特別上色，不需要標記
-          if(val && val.toLowerCase() !== 'auto' && val.toLowerCase() !== '000000'){
-            color = val.toUpperCase();
-            break;
-          }
-        }
-      }
-      colors.push(color);
-    }
-    return colors;
-  }catch(e){
-    return []; // 抓不到顏色就算了，不影響主要的文字匯入
-  }
-}
-
 function handleDocx(file){
   if(!file.name.toLowerCase().endsWith('.docx')){
     fileStatus.style.color = 'var(--tally-red)';
@@ -1214,13 +1182,9 @@ function handleDocx(file){
   fileStatus.textContent = '解析中…';
   const reader = new FileReader();
   reader.onload = function(e){
-    const buffer = e.target.result;
-    Promise.all([
-      mammoth.convertToHtml({arrayBuffer: buffer}),
-      extractParagraphColors(buffer.slice(0)) // 複製一份，避免跟 mammoth 共用同一個 buffer
-    ])
-      .then(function([result, colors]){
-        const parsedCards = docxHtmlToCards(result.value, colors);
+    mammoth.convertToHtml({arrayBuffer: e.target.result})
+      .then(function(result){
+        const parsedCards = docxHtmlToCards(result.value);
         pasteArea.value = parsedCards.join('\n\n');
         cards = splitToCards(pasteArea.value);
         fileStatus.style.color = 'var(--teal)';
@@ -2052,22 +2016,6 @@ function buildDots(){
 // （使用者根本沒有用「---」分頁），這時候光靠「第幾頁」完全不夠精準定位游標，
 // 需要精確到「第幾段」，所以這裡把每一段的原始文字依畫面出現順序記下來，
 // 並且在對應的 DOM 元素上標記 data-pidx，兩邊用同一份索引對起來。
-// 把 [[c#HEXCODE]]...[[/c]] 標記轉成彩色文字（畫面上完全看不到標記本身），
-// 對應 Word 匯入時用同一套標記把顏色資訊藏進純文字裡（見 docxHtmlToCards）
-function renderColoredText(text){
-  const regex = /\[\[c#([0-9A-Fa-f]{6})\]\]([\s\S]*?)\[\[\/c\]\]/g;
-  let result = '';
-  let lastIndex = 0;
-  let m;
-  while((m = regex.exec(text)) !== null){
-    result += escapeHtml(text.slice(lastIndex, m.index)).replace(/\n/g, '<br>');
-    result += '<span style="color:#' + m[1] + '">' + escapeHtml(m[2]).replace(/\n/g, '<br>') + '</span>';
-    lastIndex = m.index + m[0].length;
-  }
-  result += escapeHtml(text.slice(lastIndex)).replace(/\n/g, '<br>');
-  return result;
-}
-
 function paragraphsHtml(raw, registry){
   const paragraphs = raw.split(/\n{2,}/).map(p => p.trim()).filter(p => p.length > 0);
   return paragraphs.map(p => {
@@ -2080,7 +2028,7 @@ function paragraphsHtml(raw, registry){
         '<span class="cs-dot"></span>' +
       '</div>';
     }
-    return '<div class="para"' + pidxAttr + '>' + renderColoredText(p) + '</div>';
+    return '<div class="para"' + pidxAttr + '>' + escapeHtml(p).replace(/\n/g, '<br>') + '</div>';
   }).join('');
 }
 
